@@ -1,0 +1,88 @@
+/*
+ * Copyright (c) ForgeVector Software Limited. All rights reserved.
+ * Author: William Bowyer / ForgeVector Software Limited.
+ */
+
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group = 'uk.co.forgevector'
+version = '1.0.0'
+description = 'Official Java SDK for the ReplayCore developer API.'
+
+java {
+    // The Minecraft plugin ecosystem still ships servers on Java 8, so the SDK
+    // compiles to Java 8 bytecode. A toolchain pins the compiler regardless of
+    // the JDK running Gradle; if no Java 8 toolchain is installed Gradle will
+    // provision or locate one.
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+    withJavadocJar()
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // The runtime SDK has zero third-party dependencies: it uses only the JDK.
+    // Test dependencies are not shipped.
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    // Treat warnings as errors to keep the public surface clean, but silence the
+    // benign "source/target 8 is obsolete" notice a newer toolchain JDK emits.
+    options.compilerArgs << '-Xlint:all' << '-Xlint:-options' << '-Werror'
+}
+
+javadoc {
+    options.encoding = 'UTF-8'
+    options.author = true
+    options.windowTitle = 'ReplayCore Java SDK'
+    options.docTitle = 'ReplayCore Java SDK ' + version
+    options.bottom = 'Copyright &copy; ForgeVector Software Limited. All rights reserved.'
+    // Internal helpers are not part of the published surface.
+    exclude 'uk/co/forgevector/replaycore/api/internal/**'
+    if (JavaVersion.current().isJava9Compatible()) {
+        options.addBooleanOption('html5', true)
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifactId = 'replaycore-java-sdk'
+            pom {
+                name = 'ReplayCore Java SDK'
+                description = project.description
+                url = 'https://replaycore.com'
+                licenses {
+                    license {
+                        name = 'ForgeVector Software Limited Proprietary License'
+                    }
+                }
+                developers {
+                    developer {
+                        name = 'William Bowyer'
+                        organization = 'ForgeVector Software Limited'
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,43 @@
+ReplayCore Java SDK
+Copyright (c) ForgeVector Software Limited. All rights reserved.
+
+PROPRIETARY LICENSE
+
+This software and its source code (the "Software") are the proprietary
+property of ForgeVector Software Limited ("ForgeVector"). The Software is
+published publicly to enable developers and server owners to integrate their
+own applications and plugins with the ReplayCore service.
+
+1. GRANT OF LICENSE
+   Subject to the terms below, ForgeVector grants you a non-exclusive,
+   non-transferable, revocable licence to use, compile, and link against the
+   Software for the purpose of building integrations that interact with the
+   ReplayCore service through its public API.
+
+2. RESTRICTIONS
+   You may not:
+   (a) sell, sublicense, or redistribute the Software as a standalone product;
+   (b) remove or alter any copyright, attribution, or proprietary notice;
+   (c) use the Software to attempt to gain unauthorised access to ReplayCore
+       systems, to other tenants' data, or to circumvent any access control,
+       rate limit, or licensing mechanism;
+   (d) represent the Software as your own work.
+
+3. API USAGE
+   Your use of the ReplayCore service through the Software is additionally
+   governed by the ReplayCore Terms of Service. Access requires a valid,
+   tenant-scoped API key issued to you by ForgeVector. You are responsible for
+   keeping that key confidential.
+
+4. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+5. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL FORGEVECTOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM,
+   OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+For licensing enquiries, contact ForgeVector Software Limited.

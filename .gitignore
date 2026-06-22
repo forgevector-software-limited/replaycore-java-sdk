@@ -1,0 +1,27 @@
+# Build output
+build/
+out/
+target/
+bin/
+
+# Gradle
+.gradle/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local credentials — never commit an API key
+*.env
+.env
+local.properties

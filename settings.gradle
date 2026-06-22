@@ -1,0 +1,6 @@
+/*
+ * Copyright (c) ForgeVector Software Limited. All rights reserved.
+ * Author: William Bowyer / ForgeVector Software Limited.
+ */
+
+rootProject.name = 'replaycore-java-sdk'
