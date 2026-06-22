@@ -22,23 +22,35 @@ a Bukkit, Spigot, Paper or Folia plugin.
 
 ## Installation
 
-The SDK publishes as `uk.co.forgevector:replaycore-java-sdk`.
+Releases are distributed through [JitPack](https://jitpack.io). Add the JitPack
+repository, then the dependency.
 
 **Gradle**
 
 ```groovy
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
 dependencies {
-    implementation 'uk.co.forgevector:replaycore-java-sdk:1.0.0'
+    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.0.0'
 }
 ```
 
 **Maven**
 
 ```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+
 <dependency>
-    <groupId>uk.co.forgevector</groupId>
+    <groupId>com.github.forgevector-software-limited</groupId>
     <artifactId>replaycore-java-sdk</artifactId>
-    <version>1.0.0</version>
+    <version>v1.0.0</version>
 </dependency>
 ```
 
