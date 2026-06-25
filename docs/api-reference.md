@@ -33,7 +33,7 @@ completes the future exceptionally with the same `ReplayCoreException` types.
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| `apiKey(String)` | — (required) | Must carry the `rc_live_` prefix. |
+| `apiKey(String)` | n/a (required) | Must carry the `rc_live_` prefix. |
 | `baseUrl(String)` | `https://api.replaycore.com` | Override for staging. Must be http(s). |
 | `connectTimeout(Duration)` | 10s | `Duration.ZERO` means no timeout. |
 | `readTimeout(Duration)` | 30s | `Duration.ZERO` means no timeout. |
@@ -123,7 +123,7 @@ Fetch the next page with `ReplayQuery.nextPageOf(page).build()`.
 
 The cloud has no single "status" field. `isReady()` returns `true` when the
 replay has been signed with a real key (its signing key id is present and is not
-the `staging-unsigned` sentinel) and its manifest hash is set — i.e. the replay
+the `staging-unsigned` sentinel) and its manifest hash is set, i.e. the replay
 is finalised and watchable.
 
 ### Enums
@@ -131,13 +131,13 @@ is finalised and watchable.
 All enums map an unrecognised future wire value to an `UNKNOWN` constant rather
 than failing to deserialise.
 
-- **`Quality`** — `STANDARD` (`standard`), `HD` (`hd`).
-- **`StorageTier`** — `HOT` (`hot`), `R2_INFREQUENT_ACCESS` (`r2_ia`).
-- **`Visibility`** — `STAFF` (`staff`, legacy ≡ private), `PRIVATE` (`private`),
+- **`Quality`**: `STANDARD` (`standard`), `HD` (`hd`).
+- **`StorageTier`**: `HOT` (`hot`), `R2_INFREQUENT_ACCESS` (`r2_ia`).
+- **`Visibility`**: `STAFF` (`staff`, legacy ≡ private), `PRIVATE` (`private`),
   `UNLISTED` (`unlisted`), `PUBLIC` (`public`).
-- **`ArchiveStatus`** — `ORIGINAL` (`original`), `REDACTED` (`redacted`),
+- **`ArchiveStatus`**: `ORIGINAL` (`original`), `REDACTED` (`redacted`),
   `CRASH_FINALISED` (`crash-finalised`).
-- **`ApiScope`** — `REPLAYS_READ`, `REPLAYS_WRITE`, `SERVERS_READ` (reserved),
+- **`ApiScope`**: `REPLAYS_READ`, `REPLAYS_WRITE`, `SERVERS_READ` (reserved),
   `ANALYTICS_READ` (reserved).
 
 ### `Participant`
@@ -154,10 +154,10 @@ timeline. Requires the `replays:write` scope.
 
 ### `TimelineEventRequest`
 
-Start from one of two targets — supply exactly one:
+Start from one of two targets (supply exactly one):
 
-- `TimelineEventRequest.forReplay(replayId)` — pin to an existing replay.
-- `TimelineEventRequest.forActiveRecording(serverId)` — mark the server's
+- `TimelineEventRequest.forReplay(replayId)`: pin to an existing replay.
+- `TimelineEventRequest.forActiveRecording(serverId)`: mark the server's
   currently active recording (the cloud resolves the concrete replay).
 
 | Builder method | Body field | Constraint |
@@ -202,9 +202,9 @@ status) over the human-readable `detail`.
 
 **Wired today** (real, key-authed endpoints):
 
-- List/search replays — `GET /v1/api/replays`.
-- Get one replay's metadata — `GET /v1/api/replays/{id}`.
-- Create a timeline marker — `POST /v1/api/timeline-events`.
+- List/search replays: `GET /v1/api/replays`.
+- Get one replay's metadata: `GET /v1/api/replays/{id}`.
+- Create a timeline marker: `POST /v1/api/timeline-events`.
 
 **Not yet available to API-key holders** (intentionally not exposed by this SDK):
 
@@ -218,5 +218,5 @@ status) over the human-readable `detail`.
   so a key minted for them maps cleanly once those endpoints land.
 
 The SDK deliberately does **not** wrap the recorder's HMAC endpoints, the panel's
-session-authenticated routes, or any administrative endpoint — none of those are
+session-authenticated routes, or any administrative endpoint. None of those are
 reachable with a customer API key, and exposing them would be misleading.

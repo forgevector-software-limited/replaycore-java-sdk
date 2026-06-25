@@ -9,8 +9,8 @@ ReplayCore authenticates SDK requests with an **API key** scoped to your tenant
 
 1. Open the panel and go to **Settings → API keys**.
 2. Create a key, give it a descriptive name, and grant it the scopes you need:
-   - `replays:read` — list and read replay metadata.
-   - `replays:write` — add timeline markers.
+   - `replays:read`: list and read replay metadata.
+   - `replays:write`: add timeline markers.
 3. Copy the key **once**, at creation time. It begins `rc_live_` and is shown
    only then; ReplayCore stores only a hash and can never show it again.
 

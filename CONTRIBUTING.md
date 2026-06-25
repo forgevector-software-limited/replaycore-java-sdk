@@ -46,7 +46,7 @@ cleanly, so a green build means the public surface is documented and lint-clean.
   builders.
 - Validate caller input early and throw `IllegalArgumentException` for programmer
   errors; reserve the `ReplayCoreException` hierarchy for remote failures.
-- Keep comments purposeful — explain *why*, not *what the code obviously does*.
+- Keep comments purposeful: explain *why*, not *what the code obviously does*.
 - Every source file begins with the standard copyright header (see existing
   files).
 
@@ -67,4 +67,4 @@ cleanly, so a green build means the public surface is documented and lint-clean.
 ## Reporting issues
 
 Include the SDK version, your Java version, a minimal reproduction, and the full
-exception (type, status code, and `code`) — never include your API key.
+exception (type, status code, and `code`). Never include your API key.

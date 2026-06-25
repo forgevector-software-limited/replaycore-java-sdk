@@ -3,8 +3,8 @@
 Alongside the REST client, the SDK ships an **in-process extension contract** in
 the package `uk.co.forgevector.replaycore.api.plugin`. It lets a companion plugin,
 running on the same Bukkit/Spigot/Paper/Folia server as the ReplayCore recorder,
-observe the recording lifecycle and add live timeline bookmarks — from inside the
-game tick, rather than over HTTP.
+observe the recording lifecycle and add live timeline bookmarks, from inside the
+game tick rather than over HTTP.
 
 ## Status
 
@@ -16,8 +16,8 @@ to integrate in process and are grounded in the recorder's real structure:
   is the discovery pattern `ReplayCoreProvider` follows.
 - The recorder already maintains an internal capture sink that can place a
   bookmark on the active recording and report whether recording is live and at
-  which tick — the capability `RecordingService` projects.
-- The recorder drives a clear session lifecycle (start, rotate, stop) — the
+  which tick: the capability `RecordingService` projects.
+- The recorder drives a clear session lifecycle (start, rotate, stop): the
   boundaries `RecordingListener` reports.
 
 Which parts are live depends on the recorder version installed on a given server.
@@ -45,7 +45,7 @@ if (!maybe.isPresent()) {
 ReplayCoreApi api = maybe.get();
 ```
 
-Resolve the API after ReplayCore has enabled — for example order your plugin
+Resolve the API after ReplayCore has enabled. For example, order your plugin
 after `ReplayCore` (a `softdepend`) and resolve on your own enable. Check
 `api.apiVersion()` before using newer capabilities.
 
@@ -71,7 +71,7 @@ api.registerListener(new RecordingListener() {
 ```
 
 Callbacks fire on the server's main thread, so keep them quick and non-blocking.
-Offload anything heavy — including REST calls — to another thread.
+Offload anything heavy (including REST calls) to another thread.
 
 `RecordingSession` is a read-only snapshot: `sessionId()`, `serverId()`,
 `integration()`, `startedAt()`. The `sessionId()` matches the RFC-0006

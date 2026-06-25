@@ -27,7 +27,7 @@ header, or method that names a tenant; the key alone decides it.
 Because tenant scoping is enforced by the server from the resolved key:
 
 - You can only list and read **your own** replays. A replay belonging to another
-  tenant is not just hidden — it is indistinguishable from one that does not
+  tenant is not just hidden; it is indistinguishable from one that does not
   exist. `getReplay` on a foreign id returns `NotFoundException`
   (`REPLAY_NOT_FOUND`), exactly as for a non-existent id. This prevents probing
   for other tenants' data.
@@ -39,9 +39,9 @@ Because tenant scoping is enforced by the server from the resolved key:
 
 A key carries a fixed set of scopes chosen at issue time:
 
-- `replays:read` — list and read replay metadata.
-- `replays:write` — add timeline markers.
-- `servers:read`, `analytics:read` — reserved; no key-authed endpoint consumes
+- `replays:read`: list and read replay metadata.
+- `replays:write`: add timeline markers.
+- `servers:read`, `analytics:read`: reserved; no key-authed endpoint consumes
   them yet.
 
 The SDK requests only the scope an endpoint needs. If a key lacks it, the call
@@ -58,8 +58,8 @@ not expose, and provides no way to reach:
 - the panel's session-authenticated routes (account, billing, sharing, settings);
 - any administrative endpoint (tenant management, licence management, support).
 
-None of those accept a customer API key, so they are unreachable regardless — but
-the SDK does not present them either, so it cannot mislead a caller into believing
+None of those accept a customer API key, so they are unreachable regardless. The
+SDK does not present them either, so it cannot mislead a caller into believing
 they are available.
 
 ## Input validation
@@ -82,7 +82,7 @@ The key is the only secret involved. Treat it accordingly:
 - The SDK never logs, prints, or echoes the key, and sends it only over the
   configured base URL (HTTPS in production).
 - If a key is exposed, revoke it in the panel and issue a new one. Revocation
-  takes effect immediately — a revoked key resolves to the same `401
+  takes effect immediately: a revoked key resolves to the same `401
   INVALID_API_KEY` as an unknown one.
 
 ## Transport
