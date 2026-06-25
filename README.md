@@ -4,8 +4,8 @@ The official Java SDK for the [ReplayCore](https://replaycore.com) developer API
 
 ReplayCore records Minecraft server gameplay and lets it be watched back, 1:1, in
 a browser. This SDK lets plugin developers and server owners work with their own
-replays directly from Java — listing and inspecting recordings, and annotating
-their timelines — without hand-rolling HTTP calls.
+replays directly from Java (listing and inspecting recordings, and annotating
+their timelines) without hand-rolling HTTP calls.
 
 It is built for the Minecraft plugin ecosystem: it targets **Java 8** bytecode,
 has **zero third-party runtime dependencies** (JDK only), and offers both a
@@ -54,8 +54,8 @@ dependencies {
 </dependency>
 ```
 
-If you shade the SDK into a plugin jar, no relocation is required — the SDK
-brings no transitive dependencies to clash with the server's classpath.
+If you shade the SDK into a plugin jar, no relocation is required, because the
+SDK brings no transitive dependencies to clash with the server's classpath.
 
 ## Quickstart
 
@@ -78,7 +78,7 @@ ReplayPage page = client.listReplays(
 
 for (ReplayMetadata replay : page.getResults()) {
     System.out.println(replay.getDisplayName().orElse(replay.getId())
-            + " — ready=" + replay.isReady());
+            + ", ready=" + replay.isReady());
 }
 ```
 
@@ -107,7 +107,7 @@ while (true) {
 
 ### Add a timeline marker
 
-Pin a named moment on a replay — for example from your own anti-cheat or
+Pin a named moment on a replay, for example from your own anti-cheat or
 mini-game plugin:
 
 ```java
@@ -157,19 +157,19 @@ import uk.co.forgevector.replaycore.api.exception.*;
 try {
     ReplayMetadata replay = client.getReplay(id);
 } catch (NotFoundException e) {
-    // 404 — no such replay in your tenant
+    // 404: no such replay in your tenant
 } catch (AuthenticationException e) {
-    // 401 — key missing, invalid, revoked or expired
+    // 401: key missing, invalid, revoked or expired
 } catch (AuthorizationException e) {
-    // 403 — key lacks the required scope
+    // 403: key lacks the required scope
 } catch (RateLimitException e) {
-    // 429 — back off for e.getRetryAfter()
+    // 429: back off for e.getRetryAfter()
 } catch (ReplayCoreApiException e) {
-    // any other 4xx/5xx — inspect e.getStatusCode() / e.getCode()
+    // any other 4xx/5xx: inspect e.getStatusCode() / e.getCode()
 } catch (ReplayCoreTransportException e) {
     // could not reach ReplayCore at all
 } catch (ReplayCoreException e) {
-    // base type — catch this alone if you do not need to distinguish
+    // base type: catch this alone if you do not need to distinguish
 }
 ```
 
