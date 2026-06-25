@@ -184,7 +184,7 @@ method can access another tenant's data or an administrative endpoint. See
 
 Alongside the REST client, the SDK ships a forward-looking, in-process extension
 contract (package `uk.co.forgevector.replaycore.api.plugin`) for addons that run
-on the same server as the ReplayCore recorder — observing recording lifecycle and
+on the same server as the ReplayCore recorder, observing recording lifecycle and
 adding live bookmarks. Its availability depends on the recorder version on the
 server; see [`docs/plugin-extensions.md`](docs/plugin-extensions.md).
 
