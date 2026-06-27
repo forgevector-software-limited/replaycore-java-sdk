@@ -7,6 +7,7 @@ package uk.co.forgevector.replaycore.api.plugin;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -40,6 +41,7 @@ class PluginContractTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation") // exercises the retained, deprecated Bookmark for source compatibility
     void bookmarkBuilderValidatesBounds() {
         assertThrows(IllegalArgumentException.class, () -> Bookmark.builder(""));
         assertThrows(IllegalArgumentException.class, () -> Bookmark.builder("ok").colour("nope"));
@@ -49,7 +51,36 @@ class PluginContractTest {
         assertEquals("#00ff00", mark.colour().get());
     }
 
-    /** A trivial in-memory API used to exercise the provider contract. */
+    @Test
+    void integrationBookmarkBuilderValidatesAndEncodes() {
+        assertThrows(IllegalArgumentException.class, () -> IntegrationBookmark.builder("", "type").build());
+        assertThrows(IllegalArgumentException.class, () -> IntegrationBookmark.builder("src", "  ").build());
+        IntegrationBookmark mark = IntegrationBookmark.builder("MyGameMode", "objective")
+                .severity(IntegrationBookmark.Severity.WARNING)
+                .message("Captured the flag")
+                .build();
+        assertEquals("MyGameMode", mark.source());
+        assertEquals("objective", mark.type());
+        assertEquals(IntegrationBookmark.Severity.WARNING, mark.severity());
+        // The wire payload carries the required fields and the lower-case severity label.
+        String payload = mark.toPayload();
+        assertTrue(payload.contains("source=MyGameMode"));
+        assertTrue(payload.contains("type=objective"));
+        assertTrue(payload.contains("severity=warning"));
+    }
+
+    @Test
+    void umbrellaSubApisNegotiateCapabilityViaOptional() {
+        ReplayCoreApi api = new NoOpApi();
+        // Always-present surfaces are returned directly; optional ones are empty when unavailable.
+        assertNotNull(api.timeline());
+        assertNotNull(api.recordingControl());
+        assertFalse(api.clips().isPresent());
+        assertFalse(api.killReplay().isPresent());
+        assertEquals("1.0", api.apiVersion());
+    }
+
+    /** A trivial in-memory API used to exercise the provider and umbrella contract. */
     private static final class NoOpApi implements ReplayCoreApi {
         @Override
         public String apiVersion() {
@@ -57,28 +88,38 @@ class PluginContractTest {
         }
 
         @Override
-        public RecordingService recordingService() {
-            return new RecordingService() {
+        public ReplayCoreTimelineApi timeline() {
+            return bookmark -> false;
+        }
+
+        @Override
+        public RecordingControlApi recordingControl() {
+            return new RecordingControlApi() {
                 @Override
                 public boolean isRecording() {
                     return false;
                 }
 
                 @Override
-                public java.util.Optional<Long> currentTick() {
-                    return java.util.Optional.empty();
+                public java.util.OptionalLong currentTick() {
+                    return java.util.OptionalLong.empty();
                 }
 
                 @Override
                 public java.util.Optional<RecordingSession> currentSession() {
                     return java.util.Optional.empty();
                 }
-
-                @Override
-                public boolean addBookmark(Bookmark bookmark) {
-                    return false;
-                }
             };
+        }
+
+        @Override
+        public java.util.Optional<ReplayCoreClipApi> clips() {
+            return java.util.Optional.empty();
+        }
+
+        @Override
+        public java.util.Optional<KillReplayApi> killReplay() {
+            return java.util.Optional.empty();
         }
 
         @Override

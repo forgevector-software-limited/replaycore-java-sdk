@@ -13,7 +13,7 @@ import java.util.Optional;
  *
  * <p>When the recorder enables, it publishes its {@link ReplayCoreApi}
  * implementation here (and, on a Bukkit platform, also through the server's
- * services manager &mdash; the same mechanism the recorder already uses for its
+ * services manager, the same mechanism the recorder already uses for its
  * other services). An addon retrieves it with {@link #get()}:
  *
  * <pre>{@code
