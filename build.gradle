@@ -57,9 +57,11 @@ javadoc {
     options.bottom = 'Copyright &copy; ForgeVector Software Limited. All rights reserved.'
     // Internal helpers are not part of the published surface.
     exclude 'uk/co/forgevector/replaycore/api/internal/**'
-    if (JavaVersion.current().isJava9Compatible()) {
-        options.addBooleanOption('html5', true)
-    }
+    // No -html5 option: the javadoc task runs under the pinned Java 8 toolchain above, whose javadoc
+    // tool does not support -html5 (Java 8 emits HTML4, which is fine for an SDK). The old guard keyed
+    // -html5 off JavaVersion.current() - the JDK running Gradle, which on any modern build machine is
+    // 17/21 and Java-9-compatible - so the option was passed to the Java 8 tool and broke javadocJar,
+    // and therefore publish, everywhere. Dropping it is the lowest-risk fix and needs no extra toolchain.
 }
 
 publishing {
