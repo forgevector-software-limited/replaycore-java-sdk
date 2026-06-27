@@ -33,7 +33,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.0.0'
+    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.1.2'
 }
 ```
 
@@ -50,7 +50,7 @@ dependencies {
 <dependency>
     <groupId>com.github.forgevector-software-limited</groupId>
     <artifactId>replaycore-java-sdk</artifactId>
-    <version>v1.0.0</version>
+    <version>v1.1.2</version>
 </dependency>
 ```
 
