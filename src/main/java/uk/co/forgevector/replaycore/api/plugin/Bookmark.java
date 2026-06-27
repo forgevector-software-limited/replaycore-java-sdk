@@ -9,19 +9,23 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * An in-process timeline annotation an addon asks the recorder to place on the
- * <em>active</em> recording, through {@link RecordingService#addBookmark(Bookmark)}.
+ * An in-process timeline annotation an addon asks the recorder to place on the active recording.
  *
  * <p>This is the local counterpart to the REST
- * {@link uk.co.forgevector.replaycore.api.model.TimelineEventRequest}: same idea
- * (mark a named moment), but emitted from within the game tick instead of over
- * HTTP, so it pins to whatever tick the recording is on right now. The recorder
- * resolves the concrete replay; the addon never names one.
+ * {@link uk.co.forgevector.replaycore.api.model.TimelineEventRequest}: the same idea (mark a named
+ * moment), but emitted from within the game tick instead of over HTTP, so it pins to whatever tick the
+ * recording is on right now. The recorder resolves the concrete replay; the addon never names one.
  *
- * <p>Immutable; build one with {@link #builder(String)}. Field bounds match the
- * cloud's timeline-event validation (label 1&ndash;120 chars, category &le; 60,
- * actor &le; 80, colour {@code #rrggbb}).
+ * <p>Immutable; build one with {@link #builder(String)}. Field bounds match the cloud's timeline-event
+ * validation (label 1 to 120 characters, category at most 60, actor at most 80, colour {@code #rrggbb}).
+ *
+ * @deprecated Use the canonical {@link IntegrationBookmark} with
+ *             {@link ReplayCoreTimelineApi#tagTimelineEvent(IntegrationBookmark)} instead. That type is
+ *             the one the recorder writes to the replay timeline, so a marker raised through it renders
+ *             identically to the built-in events; this thin type is retained only for source
+ *             compatibility and will be removed in a future major version.
  */
+@Deprecated
 public final class Bookmark {
 
     private static final Pattern HEX_COLOUR = Pattern.compile("^#[0-9a-fA-F]{6}$");
@@ -77,7 +81,7 @@ public final class Bookmark {
     /**
      * Starts building a bookmark with the given label.
      *
-     * @param label the visible label, 1&ndash;120 characters
+     * @param label the visible label, 1 to 120 characters
      * @return a new builder
      * @throws IllegalArgumentException if the label is blank or too long
      */

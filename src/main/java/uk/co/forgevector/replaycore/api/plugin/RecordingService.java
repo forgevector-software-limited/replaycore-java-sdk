@@ -11,19 +11,17 @@ import java.util.Optional;
  * The recorder's live capture surface, as projected to an addon.
  *
  * <p>This is the public face of the recorder's internal capture sink: it reports
- * whether recording is currently active and at which tick, exposes a handle to
- * the active session, and lets an addon place a timeline bookmark on the active
- * recording. Every method is read-only or annotation-only by design &mdash; an
- * addon can enrich a recording the host already chose to make, but cannot start,
- * stop, download, delete, or read the bytes of one. Those operations remain with
- * the server's capture policy and the authenticated REST surface.
+ * whether recording is currently active and at which tick, and exposes a handle to
+ * the active session.
  *
- * <p>Obtain an instance through {@link ReplayCoreApi#recordingService()}.
- * Implementations are provided by the recorder and are safe to call from the
- * server's main thread; calls are non-blocking and return promptly.
- *
- * <p>Forward-looking contract: see the package documentation for status.
+ * @deprecated Superseded by {@link RecordingControlApi}, obtained from
+ *             {@link ReplayCoreApi#recordingControl()}, which carries the same read methods (and the
+ *             roadmap control verbs). To annotate the live recording, use
+ *             {@link ReplayCoreTimelineApi#tagTimelineEvent(IntegrationBookmark)} through
+ *             {@link ReplayCoreApi#timeline()}. This type is retained only for source compatibility and
+ *             will be removed in a future major version.
  */
+@Deprecated
 public interface RecordingService {
 
     /**
@@ -66,6 +64,12 @@ public interface RecordingService {
      * @param bookmark the bookmark to add; must not be {@code null}
      * @return {@code true} if the recorder accepted the bookmark, {@code false}
      *         if it was dropped
+     * @deprecated Use {@link ReplayCoreTimelineApi#tagTimelineEvent(IntegrationBookmark)} instead, which
+     *             is the canonical timeline-annotation surface and writes the same event the bundled
+     *             integrations and the viewer already understand. Reach it through
+     *             {@link ReplayCoreApi#timeline()}. This method is retained only for source
+     *             compatibility and will be removed in a future major version.
      */
+    @Deprecated
     boolean addBookmark(Bookmark bookmark);
 }
