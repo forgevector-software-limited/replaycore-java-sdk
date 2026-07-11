@@ -109,6 +109,7 @@ tasks.named('check') {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xpkginfo:always'
     // Treat warnings as errors to keep the public surface clean, but silence the
     // benign "source/target 8 is obsolete" notice a newer toolchain JDK emits.
     options.compilerArgs << '-Xlint:all' << '-Xlint:-options' << '-Werror'
