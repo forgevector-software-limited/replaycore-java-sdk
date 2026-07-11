@@ -18,8 +18,7 @@
  *       recorder writes, so a plugin's marker renders on the viewer's scrubber exactly like a built-in
  *       event.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.RecordingControlApi}: read whether recording is
- *       live, the current tick, and the active session (control verbs are on the roadmap, each gated
- *       behind server config or permission).</li>
+ *       live, the current tick, and the active session.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreClipApi}: save an on-demand clip from
  *       code, the in-process twin of {@code /replaycore save}. Present only when clips are enabled.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.KillReplayApi}: resolve a player's most recent

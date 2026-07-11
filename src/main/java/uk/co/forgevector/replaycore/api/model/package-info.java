@@ -9,6 +9,7 @@
  * <p>Responses become immutable value objects
  * ({@link uk.co.forgevector.replaycore.api.model.ReplayMetadata},
  * {@link uk.co.forgevector.replaycore.api.model.ReplayPage},
+ * {@link uk.co.forgevector.replaycore.api.model.ServerInstance},
  * {@link uk.co.forgevector.replaycore.api.model.TimelineMarker}); requests are
  * assembled with validating builders
  * ({@link uk.co.forgevector.replaycore.api.model.ReplayQuery},

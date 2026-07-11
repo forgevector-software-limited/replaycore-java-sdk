@@ -13,16 +13,17 @@ import java.util.UUID;
  * their own plugin so a victim (or a watching admin) can jump straight to the replay of that specific
  * death.
  *
- * <p>{@link #command()} is the ready-to-run watch command the recorder provides for this session, and
- * {@link #expiresAtMillis()} is the epoch-millis after which the session token is no longer valid. Both
- * {@link KillReplayApi} and the matching placeholder treat an expired record as "no replay available", so
- * a stale link is never offered.
+ * <p>{@link #command()} is the ready-to-run watch command when an in-game relay is available.
+ * {@link #webUrl()} is the browser link when one is available. Values returned by
+ * {@link KillReplayApi#latestKillReplay(UUID)} always have a non-blank command, while
+ * {@link KillReplayApi#latestKillReplayWithWebUrl(UUID)} may return a web-only value.
  */
 public final class KillReplay {
 
     private final UUID replayId;
     private final String command;
     private final long expiresAtMillis;
+    private final String webUrl;
 
     /**
      * Creates a kill-replay value.
@@ -32,12 +33,27 @@ public final class KillReplay {
      * @param expiresAtMillis the epoch-millis after which the session token expires
      */
     public KillReplay(UUID replayId, String command, long expiresAtMillis) {
+        this(replayId, command, expiresAtMillis, null);
+    }
+
+    /**
+     * Creates a kill-replay value with an in-game command, a browser link, or both.
+     *
+     * @param replayId        the replay id; must not be {@code null}
+     * @param command         the ready-to-run watch command, or blank when {@code webUrl} is present
+     * @param expiresAtMillis the epoch-millis after which the session token expires
+     * @param webUrl          the browser replay link, or blank when {@code command} is present
+     */
+    public KillReplay(UUID replayId, String command, long expiresAtMillis, String webUrl) {
         this.replayId = Objects.requireNonNull(replayId, "replayId");
-        if (command == null || command.trim().isEmpty()) {
-            throw new IllegalArgumentException("command must not be empty");
+        String trimmedCommand = command == null ? "" : command.trim();
+        String trimmedWebUrl = webUrl == null ? "" : webUrl.trim();
+        if (trimmedCommand.isEmpty() && trimmedWebUrl.isEmpty()) {
+            throw new IllegalArgumentException("command or webUrl must not be empty");
         }
-        this.command = command.trim();
+        this.command = trimmedCommand;
         this.expiresAtMillis = expiresAtMillis;
+        this.webUrl = trimmedWebUrl.isEmpty() ? null : trimmedWebUrl;
     }
 
     /** @return the replay id; never {@code null} */
@@ -45,9 +61,16 @@ public final class KillReplay {
         return replayId;
     }
 
-    /** @return the ready-to-run watch command for this death replay; never {@code null} */
+    /**
+     * @return the ready-to-run watch command; never {@code null}, but empty for a web-only value
+     */
     public String command() {
         return command;
+    }
+
+    /** @return the browser replay link, or {@code null} when only a command is available */
+    public String webUrl() {
+        return webUrl;
     }
 
     /** @return the epoch-millis after which the session token is no longer valid */

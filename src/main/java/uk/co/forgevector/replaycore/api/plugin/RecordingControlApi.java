@@ -12,17 +12,12 @@ import java.util.OptionalLong;
  * The recorder's recording-state surface: whether a recording is live, which tick it is on, and a handle
  * to the active session. Obtain it from {@link ReplayCoreApi#recordingControl()}.
  *
- * <p>The read methods below are live now. Control verbs that would change capture policy (for example
- * pausing capture, excluding a player, forcing a segment rotation, or triggering a death-cam) are on the
- * roadmap and will arrive in a later release, each gated behind server config or permission so a
- * third-party plugin cannot silently change capture or billing behaviour. Until then, use the read methods
- * to correlate your plugin's state with the live recording, and {@link ReplayCoreTimelineApi} to annotate
- * it.
+ * <p>This surface is read-only. Use it to correlate your plugin's state with the live recording, and use
+ * {@link ReplayCoreTimelineApi} to annotate that recording.
  *
  * <p>Implementations are provided by the recorder and are safe to call from the server's main thread:
  * calls are non-blocking and return promptly.
  *
- * <p>Forward-looking contract: see the package documentation for status.
  */
 public interface RecordingControlApi {
 

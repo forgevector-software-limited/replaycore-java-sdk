@@ -54,6 +54,7 @@ class ReplayCoreClientBuilderTest {
 
     @Test
     void buildsWithDefaults() {
+        assertEquals(System.getProperty("replaycore.sdk.version"), ReplayCoreClientBuilder.SDK_VERSION);
         assertNotNull(ReplayCoreClient.builder().apiKey(KEY).build());
     }
 

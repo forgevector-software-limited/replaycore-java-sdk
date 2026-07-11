@@ -4,8 +4,8 @@ The official Java SDK for the [ReplayCore](https://replaycore.com) developer API
 
 ReplayCore records Minecraft server gameplay and lets it be watched back, 1:1, in
 a browser. This SDK lets plugin developers and server owners work with their own
-replays directly from Java (listing and inspecting recordings, and annotating
-their timelines) without hand-rolling HTTP calls.
+replays directly from Java, list connected server instances, and annotate replay
+timelines without hand-rolling HTTP calls.
 
 It is built for the Minecraft plugin ecosystem: it targets **Java 8** bytecode,
 has **zero third-party runtime dependencies** (JDK only), and offers both a
@@ -24,6 +24,10 @@ a Bukkit, Spigot, Paper or Folia plugin.
 
 Releases are distributed through [JitPack](https://jitpack.io). Add the JitPack
 repository, then the dependency.
+
+The latest tagged release is `v1.1.2`. The `main` source tree currently identifies
+as `1.2.0-SNAPSHOT`; its connected-server client is not part of `v1.1.2`. Use a
+tagged release for production rather than a mutable branch build.
 
 **Gradle**
 
@@ -54,8 +58,9 @@ dependencies {
 </dependency>
 ```
 
-If you shade the SDK into a plugin jar, no relocation is required, because the
-SDK brings no transitive dependencies to clash with the server's classpath.
+The REST client may be included in or shaded into a standalone plugin. For the
+in-process extension API, use a compile-only dependency and do not shade or
+relocate the `api.plugin` package. See [Plugin extensions](docs/plugin-extensions.md).
 
 ## Quickstart
 
@@ -175,18 +180,17 @@ try {
 
 ## Security
 
-The SDK authenticates with a single, tenant-scoped API key and never reaches
-beyond the tenant that key belongs to. There are no embedded secrets, and no
-method can access another tenant's data or an administrative endpoint. See
-[`docs/security.md`](docs/security.md) for the full model.
+The SDK contains no embedded credential. Remote calls use the API key and scopes
+you configure, so keys must be stored securely and kept out of logs and source
+control. See [`docs/security.md`](docs/security.md) for the operating guidance.
 
 ## In-process plugin extensions
 
-Alongside the REST client, the SDK ships a forward-looking, in-process extension
-contract (package `uk.co.forgevector.replaycore.api.plugin`) for addons that run
-on the same server as the ReplayCore recorder, observing recording lifecycle and
-adding live bookmarks. Its availability depends on the recorder version on the
-server; see [`docs/plugin-extensions.md`](docs/plugin-extensions.md).
+Alongside the REST client, the SDK ships the supported in-process extension
+contract (package `uk.co.forgevector.replaycore.api.plugin`) for plugins running
+on the same server as ReplayCore. It covers recording state and lifecycle,
+timeline bookmarks, clips, and recent kill-replay links. See
+[`docs/plugin-extensions.md`](docs/plugin-extensions.md).
 
 ## Documentation
 

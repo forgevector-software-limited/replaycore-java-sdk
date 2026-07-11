@@ -43,6 +43,14 @@ class EnumMappingTest {
     }
 
     @Test
+    void serverStatusMapsKnownAndFutureValues() {
+        assertEquals(ServerStatus.ONLINE, ServerStatus.fromWire("online"));
+        assertEquals(ServerStatus.OFFLINE, ServerStatus.fromWire("offline"));
+        assertEquals(ServerStatus.UNKNOWN, ServerStatus.fromWire("starting"));
+        assertEquals(ServerStatus.UNKNOWN, ServerStatus.fromWire(null));
+    }
+
+    @Test
     void scopesExposeWireValues() {
         assertEquals("replays:read", ApiScope.REPLAYS_READ.wireValue());
         assertEquals("replays:write", ApiScope.REPLAYS_WRITE.wireValue());

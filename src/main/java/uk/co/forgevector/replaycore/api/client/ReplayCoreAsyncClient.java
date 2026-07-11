@@ -5,6 +5,7 @@
 
 package uk.co.forgevector.replaycore.api.client;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
@@ -13,6 +14,7 @@ import uk.co.forgevector.replaycore.api.exception.ReplayCoreException;
 import uk.co.forgevector.replaycore.api.model.ReplayMetadata;
 import uk.co.forgevector.replaycore.api.model.ReplayPage;
 import uk.co.forgevector.replaycore.api.model.ReplayQuery;
+import uk.co.forgevector.replaycore.api.model.ServerInstance;
 import uk.co.forgevector.replaycore.api.model.TimelineEventRequest;
 import uk.co.forgevector.replaycore.api.model.TimelineMarker;
 
@@ -101,6 +103,21 @@ public final class ReplayCoreAsyncClient {
             @Override
             public ReplayMetadata get() throws ReplayCoreException {
                 return delegate.getReplay(replayId);
+            }
+        });
+    }
+
+    /**
+     * Asynchronously lists connected servers. See {@link ReplayCoreClient#listServers()}.
+     *
+     * @return a future that completes with the connected server instances, or
+     *         completes exceptionally with a {@link ReplayCoreException}
+     */
+    public CompletableFuture<List<ServerInstance>> listServers() {
+        return supply(new ThrowingSupplier<List<ServerInstance>>() {
+            @Override
+            public List<ServerInstance> get() throws ReplayCoreException {
+                return delegate.listServers();
             }
         });
     }

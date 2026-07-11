@@ -12,7 +12,7 @@ ReplayCore authenticates SDK requests with an **API key** scoped to your tenant
    - `replays:read`: list and read replay metadata.
    - `replays:write`: add timeline markers.
 3. Copy the key **once**, at creation time. It begins `rc_live_` and is shown
-   only then; ReplayCore stores only a hash and can never show it again.
+   only then. Store it securely at creation time.
 
 Keep the key out of source control. Read it from an environment variable or your
 plugin's config file:

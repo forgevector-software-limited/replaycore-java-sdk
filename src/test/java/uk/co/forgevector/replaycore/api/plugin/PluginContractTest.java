@@ -8,8 +8,12 @@ package uk.co.forgevector.replaycore.api.plugin;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -77,14 +81,38 @@ class PluginContractTest {
         assertNotNull(api.recordingControl());
         assertFalse(api.clips().isPresent());
         assertFalse(api.killReplay().isPresent());
-        assertEquals("1.0", api.apiVersion());
+        assertEquals("1.1", api.apiVersion());
+    }
+
+    @Test
+    void killReplaySupportsCommandAndWebOnlyValues() {
+        UUID replayId = UUID.randomUUID();
+        KillReplay command = new KillReplay(replayId, "/replaycore watch token", 2_000L);
+        assertEquals("/replaycore watch token", command.command());
+        assertNull(command.webUrl());
+
+        KillReplay webOnly = new KillReplay(replayId, "", 2_000L, "https://replaycore.com/watch/token");
+        assertEquals("", webOnly.command());
+        assertEquals("https://replaycore.com/watch/token", webOnly.webUrl());
+        assertTrue(webOnly.valid(1_999L));
+        assertFalse(webOnly.valid(2_000L));
+        assertThrows(IllegalArgumentException.class, () -> new KillReplay(replayId, "", 2_000L, ""));
+    }
+
+    @Test
+    void killReplayWebLookupDefaultsToCommandLookup() {
+        UUID replayId = UUID.randomUUID();
+        KillReplay expected = new KillReplay(replayId, "/replaycore watch token", 2_000L);
+        KillReplayApi api = playerId -> Optional.of(expected);
+
+        assertEquals(expected, api.latestKillReplayWithWebUrl(UUID.randomUUID()).get());
     }
 
     /** A trivial in-memory API used to exercise the provider and umbrella contract. */
     private static final class NoOpApi implements ReplayCoreApi {
         @Override
         public String apiVersion() {
-            return "1.0";
+            return "1.1";
         }
 
         @Override

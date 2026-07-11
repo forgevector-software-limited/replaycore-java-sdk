@@ -1,0 +1,85 @@
+name: Java SDK CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4
+
+      - name: Set up Java 8
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: "8"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Build with Gradle
+        run: ./gradlew --no-daemon clean build
+
+      - name: Verify Gradle artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar_path="build/libs/replaycore-java-sdk-1.2.0-SNAPSHOT.jar"
+          test -s "$jar_path"
+          major="$(javap -verbose -classpath "$jar_path" uk.co.forgevector.replaycore.api.client.ReplayCoreClient | awk '/major version:/ {print $3}')"
+          test "$major" = "52"
+          unzip -p "$jar_path" META-INF/MANIFEST.MF | grep -Fqx $'Implementation-Version: 1.2.0-SNAPSHOT\r'
+
+      - name: Set up Java 17 for Maven release checks
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn --batch-mode --no-transfer-progress clean verify
+
+      - name: Verify Maven artifact and build parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle_jar="build/libs/replaycore-java-sdk-1.2.0-SNAPSHOT.jar"
+          maven_jar="target/replaycore-java-sdk-1.2.0-SNAPSHOT.jar"
+          test -s "$maven_jar"
+          major="$(javap -verbose -classpath "$maven_jar" uk.co.forgevector.replaycore.api.client.ReplayCoreClient | awk '/major version:/ {print $3}')"
+          test "$major" = "52"
+          unzip -p "$maven_jar" META-INF/MANIFEST.MF | grep -Fqx $'Implementation-Version: 1.2.0-SNAPSHOT\r'
+          jar tf "$gradle_jar" | grep '\.class$' | LC_ALL=C sort > /tmp/gradle-classes.txt
+          jar tf "$maven_jar" | grep '\.class$' | LC_ALL=C sort > /tmp/maven-classes.txt
+          diff -u /tmp/gradle-classes.txt /tmp/maven-classes.txt
+
+      - name: Check source headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing="$(find src -type f -name '*.java' -exec grep -L 'Copyright (c) ForgeVector Software Limited' {} +)"
+          test -z "$missing" || { printf 'Missing source headers:\n%s\n' "$missing" >&2; exit 1; }

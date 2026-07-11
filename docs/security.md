@@ -1,99 +1,66 @@
-# Security model
+# Security
 
-This SDK is a public deliverable that talks to production ReplayCore systems on
-behalf of server owners. It is designed so that using it can never become a path
-into ReplayCore's systems or another customer's data. This document states the
-model explicitly.
+The SDK uses a ReplayCore API key for remote developer API calls. Treat that key
+like a password for the scopes granted to it.
 
-## Authentication: one tenant-scoped API key
+## Create narrow keys
 
-The SDK authenticates every request with a single **API key**, supplied to the
-builder and sent as `Authorization: Bearer rc_live_<...>`. There is no other
-credential and no embedded secret anywhere in the SDK.
+Create a separate key for each integration and grant only the scopes it uses:
 
-- Keys are issued from the ReplayCore panel and are bound, at creation, to exactly
-  one tenant.
-- ReplayCore stores only a SHA-256 hash of the key, never the key itself, and
-  shows the plaintext only once at creation.
-- On each request the server resolves the key to its tenant and **injects that
-  tenant** into the request context. Every query the request makes is scoped to
-  that tenant on the server side.
+- `replays:read` lists and reads replay metadata.
+- `replays:write` adds timeline markers.
+- `servers:read` lists connected server instances.
+- `analytics:read` is reserved and is not required by the current SDK.
 
-The SDK cannot change, widen, or spoof that tenant. There is no parameter,
-header, or method that names a tenant; the key alone decides it.
+Revoke a key from the ReplayCore dashboard when an integration is retired or a
+credential may have been exposed. Use different keys for development and
+production.
 
-## Tenant isolation
+## Store keys safely
 
-Because tenant scoping is enforced by the server from the resolved key:
+- Load keys from an environment variable, secret store, or protected server
+  configuration. Do not hard-code them in Java source.
+- Keep local configuration out of version control.
+- Do not include keys in logs, exception reports, screenshots, support messages,
+  command output, or test fixtures.
+- Avoid logging HTTP request headers. The `Authorization` header contains the
+  complete key.
 
-- You can only list and read **your own** replays. A replay belonging to another
-  tenant is not just hidden; it is indistinguishable from one that does not
-  exist. `getReplay` on a foreign id returns `NotFoundException`
-  (`REPLAY_NOT_FOUND`), exactly as for a non-existent id. This prevents probing
-  for other tenants' data.
-- You can only annotate replays in your own tenant. A timeline marker request
-  cannot name a foreign tenant; the server resolves the target replay (or active
-  recording) within your tenant only.
+ReplayCore shows a newly created key once. Store it at creation time. If it is
+lost, revoke it and create another rather than trying to recover it.
 
-## Least privilege via scopes
+## Account boundaries
 
-A key carries a fixed set of scopes chosen at issue time:
+The API key determines which ReplayCore account and scopes a request may use.
+The SDK does not provide a tenant override or an administrative client. A request
+for data outside the key's account is not returned to the caller.
 
-- `replays:read`: list and read replay metadata.
-- `replays:write`: add timeline markers.
-- `servers:read`, `analytics:read`: reserved; no key-authed endpoint consumes
-  them yet.
-
-The SDK requests only the scope an endpoint needs. If a key lacks it, the call
-fails with `AuthorizationException` (`INSUFFICIENT_SCOPE`); the SDK cannot work
-around a missing scope. Issue read-only keys for read-only integrations.
-
-## No privilege-escalation surface
-
-The SDK wraps **only** the customer-API-key endpoints (`/v1/api/...`). It does
-not expose, and provides no way to reach:
-
-- the recorder's HMAC-signed plugin endpoints (server registration, uploads,
-  exports, batch delete, webhooks, privacy operations);
-- the panel's session-authenticated routes (account, billing, sharing, settings);
-- any administrative endpoint (tenant management, licence management, support).
-
-None of those accept a customer API key, so they are unreachable regardless. The
-SDK does not present them either, so it cannot mislead a caller into believing
-they are available.
-
-## Input validation
-
-Request builders validate input before anything leaves the JVM, mirroring the
-server's own validation: page size and duration bounds, mutually-exclusive
-filters, label/category/actor lengths, and `#rrggbb` colour format. User-supplied
-values placed into a URL are percent-encoded, so a filter value cannot inject
-extra query parameters or alter the request path. This is defence in depth; the
-server validates independently and is the authority.
-
-## Handling the key safely
-
-The key is the only secret involved. Treat it accordingly:
-
-- **Never hard-code it.** Load it from an environment variable, a secrets manager,
-  or your plugin's config file (kept out of version control).
-- **Never commit it.** The project `.gitignore` excludes `.env` and
-  `local.properties`; keep your key out of any tracked file.
-- The SDK never logs, prints, or echoes the key, and sends it only over the
-  configured base URL (HTTPS in production).
-- If a key is exposed, revoke it in the panel and issue a new one. Revocation
-  takes effect immediately: a revoked key resolves to the same `401
-  INVALID_API_KEY` as an unknown one.
+Access control remains a server-side responsibility. Client-side validation is
+provided for earlier, clearer errors and must not be treated as an authorisation
+boundary.
 
 ## Transport
 
-The default base URL is `https://api.replaycore.com` (TLS). The builder accepts
-an alternative base URL only for legitimate staging use and requires it to be
-`http(s)`. The SDK does not follow redirects, so a request cannot be silently
-re-pointed at another host.
+The default API origin is `https://api.replaycore.com`. Requests do not follow
+redirects.
 
-## Rate limiting
+`ReplayCoreClientBuilder.baseUrl(...)` exists for controlled development and
+staging environments. The API key is sent to the configured origin, so never
+point a real key at an origin you do not operate and trust. Use HTTPS for every
+remote environment.
 
-ReplayCore rate-limits per tenant, separately for reads and writes. When a limit
-is hit the SDK raises `RateLimitException`, exposing the server's advised back-off
-via `getRetryAfter()`. Respect it rather than retrying immediately.
+## Failures and retries
+
+Remote failures are returned through the checked `ReplayCoreException` hierarchy.
+Error details are suitable for diagnosis but may contain customer-supplied names
+or identifiers, so apply the same log access controls used for other server logs.
+
+For `RateLimitException`, wait for `getRetryAfter()` when it is present. Do not
+retry authentication or authorisation failures in a tight loop. Network retries
+should be bounded and use back-off.
+
+## Dependencies and releases
+
+The SDK has no third-party runtime dependencies. Test and build dependencies are
+still security-relevant, so use a tagged release, review dependency updates, and
+keep the SDK current. Do not depend on a mutable branch for a production plugin.

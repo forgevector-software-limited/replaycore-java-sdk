@@ -19,7 +19,6 @@ package uk.co.forgevector.replaycore.api.plugin;
  * veto or alter the recording. All methods are {@code default} no-ops so an addon
  * overrides only the boundaries it cares about.
  *
- * <p>Forward-looking contract: see the package documentation for status.
  */
 public interface RecordingListener {
 
