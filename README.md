@@ -17,8 +17,8 @@ a Bukkit, Spigot, Paper or Folia plugin.
 ## Requirements
 
 - Java 8 or newer at runtime.
-- A ReplayCore **API key** scoped to your server/tenant, issued from the
-  ReplayCore panel. Keys begin with `rc_live_`.
+- A ReplayCore **API key** scoped to your account, issued from the ReplayCore
+  dashboard. Keys begin with `rc_live_`.
 
 ## Installation
 
@@ -162,7 +162,7 @@ import uk.co.forgevector.replaycore.api.exception.*;
 try {
     ReplayMetadata replay = client.getReplay(id);
 } catch (NotFoundException e) {
-    // 404: no such replay in your tenant
+    // 404: no such replay in your ReplayCore account
 } catch (AuthenticationException e) {
     // 401: key missing, invalid, revoked or expired
 } catch (AuthorizationException e) {

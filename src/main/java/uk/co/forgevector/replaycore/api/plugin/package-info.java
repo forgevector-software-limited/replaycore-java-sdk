@@ -34,7 +34,7 @@
  *
  * <p>The contract is read and annotate only: an addon may observe sessions, annotate the timeline, and ask
  * for a clip of a recording the host already chose to capture. It cannot start, stop, download, delete, or
- * read the bytes of a recording, and it cannot reach another tenant. Those operations stay with the
+ * read the bytes of a recording, and it cannot reach another account. Those operations stay with the
  * authenticated REST surface ({@link uk.co.forgevector.replaycore.api.client.ReplayCoreClient}) and the
  * server-side capture policy, which keeps the addon surface free of any privilege-escalation path.
  */

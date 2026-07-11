@@ -9,7 +9,7 @@ package uk.co.forgevector.replaycore.api.model;
  * The scopes a ReplayCore API key may be granted.
  *
  * <p>A key carries a fixed subset of these, chosen when it is issued from the
- * ReplayCore panel. The SDK cannot widen a key's scopes; if a call fails with
+ * ReplayCore dashboard. The SDK cannot widen a key's scopes; if a call fails with
  * {@link uk.co.forgevector.replaycore.api.exception.AuthorizationException}, the
  * remedy is to issue a key with the missing scope.
  *

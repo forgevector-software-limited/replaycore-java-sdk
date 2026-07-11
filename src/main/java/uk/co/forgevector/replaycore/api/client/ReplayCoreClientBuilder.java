@@ -49,7 +49,7 @@ public final class ReplayCoreClientBuilder {
     }
 
     /**
-     * Sets the server-owner-scoped API key used to authenticate every request.
+     * Sets the account-scoped API key used to authenticate every request.
      *
      * <p>The key is validated for shape only (it must be non-blank and carry the
      * {@code rc_live_} prefix); whether it is live, revoked or expired is decided

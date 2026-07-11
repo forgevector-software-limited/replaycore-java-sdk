@@ -97,7 +97,7 @@ Fetch the next page with `ReplayQuery.nextPageOf(page).build()`.
 | Accessor | Type | Wire field |
 | --- | --- | --- |
 | `getId()` | `String` | `id` |
-| `getTenantId()` | `Optional<String>` | `tenant_id` |
+| `getTenantId()` | `Optional<String>` | Owning account id (`tenant_id` on the wire). |
 | `getServerId()` | `Optional<String>` | `server_id` |
 | `getServerName()` | `Optional<String>` | `server_name` |
 | `getDisplayName()` | `Optional<String>` | `display_name` |

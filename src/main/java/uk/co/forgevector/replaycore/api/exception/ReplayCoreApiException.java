@@ -23,8 +23,8 @@ package uk.co.forgevector.replaycore.api.exception;
  *   <li>{@link AuthorizationException} &mdash; 403 (the key lacks the scope the
  *       endpoint requires).</li>
  *   <li>{@link NotFoundException} &mdash; 404 (no such replay, or it belongs to a
- *       different tenant and is therefore invisible).</li>
- *   <li>{@link RateLimitException} &mdash; 429 (per-tenant rate limit; carries the
+ *       different account and is therefore invisible).</li>
+ *   <li>{@link RateLimitException} &mdash; 429 (per-account rate limit; carries the
  *       advised retry delay).</li>
  * </ul>
  * Any other status surfaces as a plain {@code ReplayCoreApiException}.

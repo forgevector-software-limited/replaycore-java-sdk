@@ -32,7 +32,7 @@ lost, revoke it and create another rather than trying to recover it.
 ## Account boundaries
 
 The API key determines which ReplayCore account and scopes a request may use.
-The SDK does not provide a tenant override or an administrative client. A request
+The SDK does not provide an account override or an administrative client. A request
 for data outside the key's account is not returned to the caller.
 
 Access control remains a server-side responsibility. Client-side validation is

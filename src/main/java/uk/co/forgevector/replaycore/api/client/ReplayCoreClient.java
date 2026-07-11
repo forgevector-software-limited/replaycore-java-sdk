@@ -34,7 +34,7 @@ import uk.co.forgevector.replaycore.api.model.TimelineMarker;
 /**
  * The synchronous entry point to ReplayCore's public developer API.
  *
- * <p>A client is configured once, with a base URL and a server-owner-scoped API
+ * <p>A client is configured once, with a base URL and an account-scoped API
  * key, and is then safe to share and call concurrently from any number of
  * threads. Build one with {@link #builder()}:
  *
@@ -50,10 +50,10 @@ import uk.co.forgevector.replaycore.api.model.TimelineMarker;
  * }
  * }</pre>
  *
- * <h2>Authentication and tenant scoping</h2>
+ * <h2>Authentication and account scoping</h2>
  * Every request is sent with {@code Authorization: Bearer <apiKey>}. The API key
- * binds the request to exactly one tenant on the server side; this client cannot
- * widen that scope, name another tenant, or reach an admin endpoint. The key is
+ * binds the request to exactly one ReplayCore account on the server side; this client cannot
+ * widen that scope, name another account, or reach an admin endpoint. The key is
  * the only secret the SDK holds, and it is never logged or echoed.
  *
  * <h2>Errors</h2>
@@ -97,7 +97,7 @@ public final class ReplayCoreClient {
     }
 
     /**
-     * Lists replays in the caller's tenant, newest first, applying the supplied
+     * Lists replays in the caller's ReplayCore account, newest first, applying the supplied
      * filters.
      *
      * <p>Results are paginated with opaque cursors. When the returned page reports
@@ -112,7 +112,7 @@ public final class ReplayCoreClient {
      *                                 or expired (HTTP 401)
      * @throws AuthorizationException  if the key lacks the {@code replays:read}
      *                                 scope (HTTP 403)
-     * @throws RateLimitException      if the tenant's read rate limit is exceeded
+     * @throws RateLimitException      if the account's read rate limit is exceeded
      *                                 (HTTP 429)
      * @throws ReplayCoreApiException  for any other non-success status
      * @throws ReplayCoreTransportException if the server cannot be reached
@@ -140,12 +140,12 @@ public final class ReplayCoreClient {
      * @param replayId the replay's UUID; must not be {@code null} or blank
      * @return the replay metadata
      * @throws NotFoundException       if no such replay exists in the caller's
-     *                                 tenant (HTTP 404)
+     *                                 account (HTTP 404)
      * @throws AuthenticationException if the API key is missing, invalid, revoked
      *                                 or expired (HTTP 401)
      * @throws AuthorizationException  if the key lacks the {@code replays:read}
      *                                 scope (HTTP 403)
-     * @throws RateLimitException      if the tenant's read rate limit is exceeded
+     * @throws RateLimitException      if the account's read rate limit is exceeded
      *                                 (HTTP 429)
      * @throws ReplayCoreApiException  for any other non-success status
      * @throws ReplayCoreTransportException if the server cannot be reached
@@ -205,7 +205,7 @@ public final class ReplayCoreClient {
      *                                 or expired (HTTP 401)
      * @throws AuthorizationException  if the key lacks the {@code replays:write}
      *                                 scope (HTTP 403)
-     * @throws RateLimitException      if the tenant's write rate limit is exceeded
+     * @throws RateLimitException      if the account's write rate limit is exceeded
      *                                 (HTTP 429)
      * @throws ReplayCoreApiException  for any other non-success status (for
      *                                 example {@code TOO_MANY_MARKERS}, HTTP 409)

@@ -13,8 +13,8 @@ package uk.co.forgevector.replaycore.api.model;
  *   <li>{@link #STAFF} is a legacy default that behaves exactly as
  *       {@link #PRIVATE}; it is retained for older rows and never written by
  *       newer governance-aware paths.</li>
- *   <li>{@link #PRIVATE} is watchable only by tenant members.</li>
- *   <li>{@link #UNLISTED} is never listed publicly but is watchable by tenant
+ *   <li>{@link #PRIVATE} is watchable only by account members.</li>
+ *   <li>{@link #UNLISTED} is never listed publicly but is watchable by account
  *       members and by anyone holding an active share link.</li>
  *   <li>{@link #PUBLIC} is openly watchable.</li>
  * </ul>
@@ -24,7 +24,7 @@ public enum Visibility {
     /** Legacy default; behaves as {@link #PRIVATE}. Wire value {@code "staff"}. */
     STAFF("staff"),
 
-    /** Watchable only by tenant members. Wire value {@code "private"}. */
+    /** Watchable only by account members. Wire value {@code "private"}. */
     PRIVATE("private"),
 
     /** Hidden from public listings but watchable via share link. Wire value {@code "unlisted"}. */
