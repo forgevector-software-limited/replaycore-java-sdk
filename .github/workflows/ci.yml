@@ -41,7 +41,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Build with Gradle
-        run: ./gradlew --no-daemon clean build
+        run: bash ./gradlew --no-daemon clean build
 
       - name: Verify Gradle artifact
         shell: bash
