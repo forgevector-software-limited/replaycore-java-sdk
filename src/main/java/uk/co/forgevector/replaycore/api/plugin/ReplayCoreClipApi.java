@@ -28,17 +28,13 @@ import java.util.UUID;
  * }
  * }</pre>
  *
- * <p>Every call is non-blocking and main-thread-safe: it validates, clamps the window to
- * {@code min(requested, online this session, server cap)}, honours the same per-requester cooldown as the
- * command (a plugin cannot bypass the limits), enqueues the work, and returns immediately. The cloud mint
- * and the clickable link delivery happen off the main thread on the clip worker. Both recorder lanes
- * (modern 1.21 and above, and legacy 1.8.8) register the identical service.
+ * <p>Every call is non-blocking and safe from the server thread. Requested windows, cooldowns, and
+ * capacity are subject to the same server configuration as the equivalent commands.
  *
  * <p>For an open-ended window (for example a round of unknown length), call {@link #startClip} at the
  * round start and {@link #stopClip} at the end instead of {@link #saveClip}: the same in-marker mechanism
  * as {@code /replaycore start | stop}.
  *
- * <p>Forward-looking contract: see the package documentation for status.
  */
 public interface ReplayCoreClipApi {
 
@@ -88,9 +84,9 @@ public interface ReplayCoreClipApi {
         ON_COOLDOWN,
         /** The clamped window was below the minimum floor (not enough gameplay yet). */
         TOO_SHORT,
-        /** Recording is currently stopped on this server (emergency switch or cloud kill-switch). */
+        /** Recording is currently stopped on this server. */
         NO_RECORDING,
-        /** The clip queue is saturated (backpressure) or the requester is at their in-flight cap. */
+        /** Clip processing is temporarily at capacity. */
         BUSY,
         /** The target could not be resolved, or clips are otherwise unavailable. */
         UNAVAILABLE
@@ -104,7 +100,7 @@ public interface ReplayCoreClipApi {
         ALREADY_OPEN,
         /** The requester is on cooldown for the start action. */
         ON_COOLDOWN,
-        /** Recording is currently stopped on this server (emergency switch or cloud kill-switch). */
+        /** Recording is currently stopped on this server. */
         NO_RECORDING,
         /** The target could not be resolved, or clips are otherwise unavailable. */
         UNAVAILABLE
@@ -120,9 +116,9 @@ public interface ReplayCoreClipApi {
         ON_COOLDOWN,
         /** The clamped window was below the minimum floor (the clip was started too recently). */
         TOO_SHORT,
-        /** Recording is currently stopped on this server (emergency switch or cloud kill-switch). */
+        /** Recording is currently stopped on this server. */
         NO_RECORDING,
-        /** The clip queue is saturated (backpressure) or the requester is at their in-flight cap. */
+        /** Clip processing is temporarily at capacity. */
         BUSY,
         /** The target could not be resolved, or clips are otherwise unavailable. */
         UNAVAILABLE

@@ -2,8 +2,11 @@
 
 This reference documents the public surface of the ReplayCore Java SDK and the
 REST endpoints it wraps. It reflects the endpoints ReplayCore exposes to API-key
-holders today; see [Coverage and roadmap](#coverage-and-roadmap) for what is and
-is not yet available.
+holders today; see [Endpoint coverage](#endpoint-coverage) for the current
+boundary.
+
+This page follows the `1.2.0-SNAPSHOT` source on `main`. The latest tagged release
+and its matching documentation remain available from that release's Git tag.
 
 The generated Javadoc is the authoritative, method-level reference. Build it with
 `./gradlew javadoc` and open `build/docs/javadoc/index.html`.
@@ -20,11 +23,12 @@ Configured through `ReplayCoreClient.builder()`. Immutable and thread-safe.
 | --- | --- | --- |
 | `listReplays(ReplayQuery)` → `ReplayPage` | `GET /v1/api/replays` | `replays:read` |
 | `getReplay(String id)` → `ReplayMetadata` | `GET /v1/api/replays/{id}` | `replays:read` |
+| `listServers()` → `List<ServerInstance>` | `GET /v1/api/servers` | `servers:read` |
 | `createTimelineMarker(TimelineEventRequest)` → `TimelineMarker` | `POST /v1/api/timeline-events` | `replays:write` |
 
 ### `ReplayCoreAsyncClient` (asynchronous)
 
-The same three methods, each returning a `CompletableFuture`. Build via
+The same four methods, each returning a `CompletableFuture`. Build via
 `builder().buildAsync()`, or wrap an existing `ReplayCoreClient`. A failure
 completes the future exceptionally with the same `ReplayCoreException` types.
 `blocking()` returns the underlying synchronous client.
@@ -93,7 +97,7 @@ Fetch the next page with `ReplayQuery.nextPageOf(page).build()`.
 | Accessor | Type | Wire field |
 | --- | --- | --- |
 | `getId()` | `String` | `id` |
-| `getTenantId()` | `Optional<String>` | `tenant_id` |
+| `getTenantId()` | `Optional<String>` | Owning account id (`tenant_id` on the wire). |
 | `getServerId()` | `Optional<String>` | `server_id` |
 | `getServerName()` | `Optional<String>` | `server_name` |
 | `getDisplayName()` | `Optional<String>` | `display_name` |
@@ -137,13 +141,32 @@ than failing to deserialise.
   `UNLISTED` (`unlisted`), `PUBLIC` (`public`).
 - **`ArchiveStatus`**: `ORIGINAL` (`original`), `REDACTED` (`redacted`),
   `CRASH_FINALISED` (`crash-finalised`).
-- **`ApiScope`**: `REPLAYS_READ`, `REPLAYS_WRITE`, `SERVERS_READ` (reserved),
+- **`ApiScope`**: `REPLAYS_READ`, `REPLAYS_WRITE`, `SERVERS_READ`, and
   `ANALYTICS_READ` (reserved).
 
 ### `Participant`
 
 `getUuid()` (always present), `getName()` (`Optional<String>`), `getRole()`
 (`Optional<String>`).
+
+---
+
+## Connected servers
+
+`listServers()` returns an unmodifiable list of the Minecraft server instances
+connected to the account. It requires `servers:read` and is not paginated.
+
+### `ServerInstance`
+
+| Accessor | Meaning |
+| --- | --- |
+| `getId()` | Stable ReplayCore server id. |
+| `getName()` | Display name. |
+| `getStatus()` | `ONLINE`, `OFFLINE`, or `UNKNOWN`. |
+| `getLastSeenAt()` | Last report time, when available. |
+| `getPluginVersion()` | Last reported ReplayCore plugin version, when available. |
+| `getPlayerCount()` | Live player count; absent while offline or unavailable. |
+| `getReplayCount()` | Number of replays recorded by this server instance. |
 
 ---
 
@@ -198,25 +221,22 @@ status) over the human-readable `detail`.
 
 ---
 
-## Coverage and roadmap
+## Endpoint coverage
 
 **Wired today** (real, key-authed endpoints):
 
 - List/search replays: `GET /v1/api/replays`.
 - Get one replay's metadata: `GET /v1/api/replays/{id}`.
+- List connected servers: `GET /v1/api/servers`.
 - Create a timeline marker: `POST /v1/api/timeline-events`.
 
 **Not yet available to API-key holders** (intentionally not exposed by this SDK):
 
-- Signed replay **downloads**. Download URL signing exists in the platform but is
-  served only to the recorder plugin (HMAC-authenticated) and the panel session,
-  not to customer API keys. The SDK will add `getDownloadUrl(...)` when a
-  key-authed download endpoint ships.
-- **Server listing** and **analytics**. The `servers:read` and `analytics:read`
-  scopes are defined and grantable, but no key-authed endpoint consumes them yet.
-  The SDK reserves the scopes (`ApiScope.SERVERS_READ`, `ApiScope.ANALYTICS_READ`)
-  so a key minted for them maps cleanly once those endpoints land.
+- Signed replay **downloads**. The current public API does not provide an
+  API-key-authenticated download method.
+- **Analytics**. `analytics:read` is reserved, but the current public API does not
+  provide an analytics endpoint.
 
-The SDK deliberately does **not** wrap the recorder's HMAC endpoints, the panel's
-session-authenticated routes, or any administrative endpoint. None of those are
-reachable with a customer API key, and exposing them would be misleading.
+The SDK deliberately wraps only the documented public developer API. Dashboard,
+recorder, and administrative routes use separate access models and are outside
+this SDK's contract.

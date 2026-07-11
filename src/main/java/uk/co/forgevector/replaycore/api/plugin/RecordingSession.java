@@ -13,12 +13,10 @@ import java.util.Optional;
  * has just finished capturing.
  *
  * <p>An addon receives these from {@link RecordingListener} callbacks and from
- * {@link RecordingService#currentSession()}. A session is a snapshot of immutable
+ * {@link RecordingControlApi#currentSession()}. A session is a snapshot of immutable
  * facts about the recording; it is not a control handle and exposes no way to
  * start, stop, download or delete a recording. Live, mutable state (such as the
- * current tick) is read through {@link RecordingService}, not here.
- *
- * <p>Forward-looking contract: see the package documentation for status.
+ * current tick) is read through {@link RecordingControlApi}, not here.
  */
 public interface RecordingSession {
 

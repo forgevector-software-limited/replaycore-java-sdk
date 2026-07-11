@@ -9,14 +9,13 @@ package uk.co.forgevector.replaycore.api.model;
  * The scopes a ReplayCore API key may be granted.
  *
  * <p>A key carries a fixed subset of these, chosen when it is issued from the
- * ReplayCore panel. The SDK cannot widen a key's scopes; if a call fails with
+ * ReplayCore dashboard. The SDK cannot widen a key's scopes; if a call fails with
  * {@link uk.co.forgevector.replaycore.api.exception.AuthorizationException}, the
  * remedy is to issue a key with the missing scope.
  *
- * <p>Only {@link #REPLAYS_READ} and {@link #REPLAYS_WRITE} are consumed by an
- * endpoint today. {@link #SERVERS_READ} and {@link #ANALYTICS_READ} are
- * recognised and storable but currently have no key-authed endpoint; they are
- * declared here so a key minted for them maps cleanly once those endpoints ship.
+ * <p>{@link #REPLAYS_READ}, {@link #REPLAYS_WRITE} and {@link #SERVERS_READ}
+ * are consumed by the current public API. {@link #ANALYTICS_READ} is reserved
+ * for future public analytics endpoints.
  */
 public enum ApiScope {
 
@@ -26,11 +25,7 @@ public enum ApiScope {
     /** Write timeline markers onto replays. Wire value {@code "replays:write"}. */
     REPLAYS_WRITE("replays:write"),
 
-    /**
-     * Read connected-server metadata. Wire value {@code "servers:read"}.
-     *
-     * <p>Reserved: no key-authed endpoint consumes this scope yet.
-     */
+    /** Read connected-server metadata. Wire value {@code "servers:read"}. */
     SERVERS_READ("servers:read"),
 
     /**

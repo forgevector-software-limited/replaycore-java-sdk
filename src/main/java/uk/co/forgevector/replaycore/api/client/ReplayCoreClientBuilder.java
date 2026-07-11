@@ -35,7 +35,8 @@ public final class ReplayCoreClientBuilder {
 
     private static final int DEFAULT_CONNECT_TIMEOUT_MILLIS = 10_000;
     private static final int DEFAULT_READ_TIMEOUT_MILLIS = 30_000;
-    private static final String DEFAULT_USER_AGENT = "replaycore-java-sdk/1.0.0";
+    static final String SDK_VERSION = "1.2.0-SNAPSHOT";
+    private static final String DEFAULT_USER_AGENT = "replaycore-java-sdk/" + SDK_VERSION;
 
     private String baseUrl = ReplayCoreClient.DEFAULT_BASE_URL;
     private String apiKey;
@@ -48,7 +49,7 @@ public final class ReplayCoreClientBuilder {
     }
 
     /**
-     * Sets the server-owner-scoped API key used to authenticate every request.
+     * Sets the account-scoped API key used to authenticate every request.
      *
      * <p>The key is validated for shape only (it must be non-blank and carry the
      * {@code rc_live_} prefix); whether it is live, revoked or expired is decided

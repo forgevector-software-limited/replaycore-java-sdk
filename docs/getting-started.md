@@ -4,15 +4,16 @@ This guide takes you from an empty project to a working ReplayCore integration.
 
 ## 1. Get an API key
 
-ReplayCore authenticates SDK requests with an **API key** scoped to your tenant
-(your account and its servers). Issue one from the ReplayCore panel:
+ReplayCore authenticates SDK requests with an **API key** scoped to your account
+and its servers. Issue one from the ReplayCore dashboard:
 
-1. Open the panel and go to **Settings → API keys**.
+1. Open the dashboard and go to **Settings → API keys**.
 2. Create a key, give it a descriptive name, and grant it the scopes you need:
    - `replays:read`: list and read replay metadata.
    - `replays:write`: add timeline markers.
+   - `servers:read`: list connected server instances.
 3. Copy the key **once**, at creation time. It begins `rc_live_` and is shown
-   only then; ReplayCore stores only a hash and can never show it again.
+   only then. Store it securely at creation time.
 
 Keep the key out of source control. Read it from an environment variable or your
 plugin's config file:
@@ -24,7 +25,7 @@ String apiKey = System.getenv("REPLAYCORE_API_KEY");
 ## 2. Add the dependency
 
 See the README for the Gradle and Maven coordinates
-(`uk.co.forgevector:replaycore-java-sdk`). The SDK needs Java 8+ and pulls in no
+(`com.github.forgevector-software-limited:replaycore-java-sdk`). The SDK needs Java 8+ and pulls in no
 other runtime dependencies.
 
 ## 3. Build a client

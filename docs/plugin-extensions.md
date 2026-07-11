@@ -1,118 +1,183 @@
-# Plugin extension contract
+# Plugin extensions
 
-Alongside the REST client, the SDK ships an **in-process extension contract** in
-the package `uk.co.forgevector.replaycore.api.plugin`. It lets a companion plugin,
-running on the same Bukkit/Spigot/Paper/Folia server as the ReplayCore recorder,
-observe the recording lifecycle and add live timeline bookmarks, from inside the
-game tick rather than over HTTP.
+The package `uk.co.forgevector.replaycore.api.plugin` is the supported Java
+contract for plugins running on the same Minecraft server as ReplayCore. Contract
+version `1.1` provides recording state, lifecycle events, timeline bookmarks,
+on-demand clips, and recent kill-replay links.
 
-## Status
+## Add the contract to your plugin
 
-This is a **forward-looking contract**. The interfaces describe the supported way
-to integrate in process and are grounded in the recorder's real structure:
+Use the SDK as a compile-only dependency when calling the in-process API. The
+running ReplayCore plugin supplies these classes:
 
-- The recorder already registers services through the platform's
-  `ServicesManager` (the same mechanism it uses for its existing services), which
-  is the discovery pattern `ReplayCoreProvider` follows.
-- The recorder already maintains an internal capture sink that can place a
-  bookmark on the active recording and report whether recording is live and at
-  which tick: the capability `RecordingService` projects.
-- The recorder drives a clear session lifecycle (start, rotate, stop): the
-  boundaries `RecordingListener` reports.
+```groovy
+dependencies {
+    compileOnly 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.1.2'
+}
+```
 
-Which parts are live depends on the recorder version installed on a given server.
-Always discover availability at runtime (below) and degrade gracefully when the
-recorder is absent or older.
+```yaml
+# plugin.yml
+softdepend: [ReplayCore]
+```
 
-This contract is intentionally **annotation-only**. An addon can observe sessions
-and enrich a recording the host already chose to make; it cannot start, stop,
-download, delete, or read the bytes of a recording, and it cannot reach another
-tenant. Those operations stay with the server's capture policy and the
-authenticated REST surface, which keeps the in-process surface free of any
-privilege-escalation path.
+Do not shade or relocate the `api.plugin` package into an integration plugin.
+ReplayCore and the integration must use the same API classes for service
+discovery. If ReplayCore is an optional dependency, keep integration code in a
+class that is loaded only after you have confirmed ReplayCore is present.
 
-## Discovering the API
+The REST client has a different deployment model. It may be included in or
+shaded into a standalone plugin that makes remote API calls.
+
+## Discover the API
+
+Resolve the API after ReplayCore has enabled:
 
 ```java
+import java.util.Optional;
 import uk.co.forgevector.replaycore.api.plugin.ReplayCoreApi;
 import uk.co.forgevector.replaycore.api.plugin.ReplayCoreProvider;
 
-Optional<ReplayCoreApi> maybe = ReplayCoreProvider.get();
-if (!maybe.isPresent()) {
-    getLogger().warning("ReplayCore not present; integration features disabled.");
+Optional<ReplayCoreApi> available = ReplayCoreProvider.get();
+if (!available.isPresent()) {
+    getLogger().info("ReplayCore integration is unavailable.");
     return;
 }
-ReplayCoreApi api = maybe.get();
+
+ReplayCoreApi replayCore = available.get();
+if (!replayCore.apiVersion().startsWith("1.")) {
+    getLogger().warning("Unsupported ReplayCore API version: " + replayCore.apiVersion());
+    return;
+}
 ```
 
-Resolve the API after ReplayCore has enabled. For example, order your plugin
-after `ReplayCore` (a `softdepend`) and resolve on your own enable. Check
-`api.apiVersion()` before using newer capabilities.
+`timeline()` and `recordingControl()` are available while ReplayCore is enabled.
+`clips()` and `killReplay()` return `Optional` because those features depend on
+the server's ReplayCore configuration.
 
-## Observing the recording lifecycle
+## Read recording state
+
+```java
+import uk.co.forgevector.replaycore.api.plugin.RecordingControlApi;
+
+RecordingControlApi recording = replayCore.recordingControl();
+if (recording.isRecording()) {
+    recording.currentTick().ifPresent(tick ->
+            getLogger().fine("ReplayCore tick: " + tick));
+}
+```
+
+`currentSession()` returns the active `RecordingSession`, including its stable
+session id, server id, optional integration name, and start time. It is a
+read-only snapshot and does not start or stop recording.
+
+## Observe recording lifecycle
 
 ```java
 import uk.co.forgevector.replaycore.api.plugin.RecordingListener;
 import uk.co.forgevector.replaycore.api.plugin.RecordingSession;
 
-api.registerListener(new RecordingListener() {
+RecordingListener listener = new RecordingListener() {
     @Override
     public void onRecordingStarted(RecordingSession session) {
-        getLogger().info("recording started: " + session.sessionId());
+        getLogger().info("ReplayCore recording started: " + session.sessionId());
     }
 
     @Override
     public void onRecordingStopped(RecordingSession session) {
-        // The replay now enters cloud finalisation. Its metadata becomes
-        // available through the REST client once ReplayMetadata.isReady() is true.
-        getLogger().info("recording stopped: " + session.sessionId());
+        getLogger().info("ReplayCore recording stopped: " + session.sessionId());
+    }
+};
+
+replayCore.registerListener(listener);
+```
+
+Unregister listeners when your plugin disables. Lifecycle callbacks run on the
+server thread, so return quickly and move file, database, or network work to an
+appropriate scheduler.
+
+## Add a timeline bookmark
+
+Use `IntegrationBookmark` for new integrations:
+
+```java
+import uk.co.forgevector.replaycore.api.plugin.IntegrationBookmark;
+
+boolean accepted = replayCore.timeline().tagTimelineEvent(
+        IntegrationBookmark.builder("MyGameMode", "objective_captured")
+                .severity(IntegrationBookmark.Severity.INFO)
+                .player(player.getUniqueId(), player.getName())
+                .arena(arenaId)
+                .message("Captured the red flag")
+                .metadata("team", "blue")
+                .build());
+
+if (!accepted) {
+    getLogger().fine("ReplayCore did not record the bookmark.");
+}
+```
+
+`source` identifies your integration and `type` identifies the event. Keep both
+stable so viewer filters and later analysis remain consistent. Bookmark values
+are bounded by the SDK. An ordinary refusal is reported as `false`, for example
+when no recording is active.
+
+## Save a clip
+
+The optional clip API mirrors the server's ReplayCore clip commands without
+making the integration dispatch commands:
+
+```java
+import java.time.Duration;
+import java.util.UUID;
+import uk.co.forgevector.replaycore.api.plugin.ReplayCoreClipApi;
+
+UUID requester = staff.getUniqueId();
+UUID target = reportedPlayer.getUniqueId();
+
+replayCore.clips().ifPresent(clips -> {
+    ReplayCoreClipApi.SaveResult result =
+            clips.saveClip(requester, target, Duration.ofSeconds(30));
+    if (result != ReplayCoreClipApi.SaveResult.SAVING) {
+        getLogger().fine("ReplayCore clip not saved: " + result);
     }
 });
 ```
 
-Callbacks fire on the server's main thread, so keep them quick and non-blocking.
-Offload anything heavy (including REST calls) to another thread.
+For a window whose end is not known in advance, call `startClip(requester,
+target)` and later `stopClip(requester, target)`. Inspect the returned enum rather
+than assuming the request was accepted. ReplayCore applies the server's clip
+availability, duration, cooldown, and capacity rules to API calls as well as
+commands.
 
-`RecordingSession` is a read-only snapshot: `sessionId()`, `serverId()`,
-`integration()`, `startedAt()`. The `sessionId()` matches the RFC-0006
-`session_id` that segmented replays expose through the REST API, so it is your
-join key between an in-process session and the replay metadata you later fetch.
+## Surface a recent kill replay
 
-## Adding live bookmarks
+When death-cam is enabled, an integration can obtain the latest still-valid
+replay offered for a player:
 
 ```java
-import uk.co.forgevector.replaycore.api.plugin.Bookmark;
-import uk.co.forgevector.replaycore.api.plugin.RecordingService;
+import uk.co.forgevector.replaycore.api.plugin.KillReplay;
 
-RecordingService recording = api.recordingService();
-
-if (recording.isRecording()) {
-    boolean accepted = recording.addBookmark(
-            Bookmark.builder("Final Kill")
-                    .category("combat")
-                    .colour("#ff5555")
-                    .build());
-    // accepted == false if the recorder dropped it (not recording, budget hit,
-    // or capture policy disallowed it). It never throws for an ordinary drop.
-}
+replayCore.killReplay().ifPresent(killReplays ->
+        killReplays.latestKillReplay(player.getUniqueId()).ifPresent(replay -> {
+            if (replay.valid(System.currentTimeMillis())) {
+                player.sendMessage("Replay: " + replay.command());
+            }
+        }));
 ```
 
-`RecordingService` also exposes `currentTick()` and `currentSession()`, so you
-can correlate addon state with the recording timeline, or remember a tick to pin
-a marker against later through the REST client.
-
-## Relationship to the REST timeline-event endpoint
-
-`RecordingService.addBookmark(...)` is the in-process counterpart of the REST
-`createTimelineMarker(...)`: same idea (mark a named moment), but emitted from
-within the tick loop against whatever recording is live now, with no network round
-trip. Use the in-process path for live, low-latency tagging on the recording host;
-use the REST path from an external service, or to annotate an existing replay
-after the fact.
+`KillReplay` in `v1.1.2` exposes `replayId()`, `command()`, `expiresAtMillis()`,
+and `valid(nowMillis)`. The `1.2.0-SNAPSHOT` source also provides `webUrl()` and
+`latestKillReplayWithWebUrl()` for browser-only links. Do not compile against
+those additions until using a release that contains them. An empty result means
+there is no current link to display.
 
 ## Compatibility
 
-`ReplayCoreApi.apiVersion()` returns a `major.minor` string. The major component
-changes only on an incompatible change; check it before relying on capabilities
-added after `1.0`. Because availability depends on the recorder build, treat every
-in-process call as best-effort and guard with `ReplayCoreProvider.get()`.
+- Check the major component of `apiVersion()` before using the contract.
+- Detect optional features with `clips()` and `killReplay()` on every enable.
+- `Bookmark`, `RecordingService`, and the related legacy accessors remain for
+  source compatibility but are deprecated. New integrations should use
+  `IntegrationBookmark`, `ReplayCoreTimelineApi`, and `RecordingControlApi`.
+- Compile and test against the oldest ReplayCore release your integration claims
+  to support.

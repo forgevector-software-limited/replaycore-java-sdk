@@ -8,10 +8,10 @@ package uk.co.forgevector.replaycore.api.exception;
 import java.time.Duration;
 
 /**
- * Raised for HTTP 429 responses: the per-tenant rate limit for the endpoint has
+ * Raised for HTTP 429 responses: the per-account rate limit for the endpoint has
  * been exceeded.
  *
- * <p>ReplayCore enforces read and write limits separately, keyed on the tenant
+ * <p>ReplayCore enforces read and write limits separately, keyed on the account
  * the API key resolves to. When the server can tell when the window resets it
  * sends a {@code Retry-After} header; the SDK parses it into {@link #getRetryAfter()}
  * so callers can back off cleanly rather than hammering a closed window.

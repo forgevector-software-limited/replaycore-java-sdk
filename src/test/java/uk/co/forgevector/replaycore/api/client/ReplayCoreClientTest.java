@@ -31,6 +31,8 @@ import uk.co.forgevector.replaycore.api.model.Quality;
 import uk.co.forgevector.replaycore.api.model.ReplayMetadata;
 import uk.co.forgevector.replaycore.api.model.ReplayPage;
 import uk.co.forgevector.replaycore.api.model.ReplayQuery;
+import uk.co.forgevector.replaycore.api.model.ServerInstance;
+import uk.co.forgevector.replaycore.api.model.ServerStatus;
 import uk.co.forgevector.replaycore.api.model.TimelineEventRequest;
 import uk.co.forgevector.replaycore.api.model.TimelineMarker;
 import uk.co.forgevector.replaycore.api.model.Visibility;
@@ -96,6 +98,8 @@ class ReplayCoreClientTest {
         HttpRequest sent = transport.lastRequest();
         assertEquals("GET", sent.getMethod());
         assertEquals("Bearer " + KEY, sent.getHeaders().get("Authorization"));
+        assertEquals("replaycore-java-sdk/" + ReplayCoreClientBuilder.SDK_VERSION,
+                sent.getHeaders().get("User-Agent"));
         assertTrue(sent.getUrl().startsWith(BASE + "/v1/api/replays?"));
         assertTrue(sent.getUrl().contains("page_size=20"));
     }
@@ -157,6 +161,50 @@ class ReplayCoreClientTest {
         assertEquals(404, ex.getStatusCode());
         assertEquals("REPLAY_NOT_FOUND", ex.getCode());
         assertEquals("no such replay", ex.getDetail());
+    }
+
+    @Test
+    void listServersParsesLiveAndOfflineInstances() throws ReplayCoreException {
+        String body = "{\"servers\":["
+                + "{\"id\":\"server-1\",\"name\":\"Survival EU\",\"status\":\"online\","
+                + "\"lastSeenAt\":\"2026-07-11T10:15:30Z\",\"pluginVersion\":\"1.2.3\","
+                + "\"playerCount\":7,\"replayCount\":51},"
+                + "{\"id\":\"server-2\",\"name\":\"Events\",\"status\":\"offline\","
+                + "\"lastSeenAt\":null,\"pluginVersion\":null,\"playerCount\":null,"
+                + "\"replayCount\":4}]}";
+        RecordingTransport transport = new RecordingTransport().enqueue(200, body);
+
+        java.util.List<ServerInstance> servers = clientWith(transport).listServers();
+
+        assertEquals(2, servers.size());
+        ServerInstance online = servers.get(0);
+        assertEquals("server-1", online.getId());
+        assertEquals("Survival EU", online.getName());
+        assertEquals(ServerStatus.ONLINE, online.getStatus());
+        assertEquals(Instant.parse("2026-07-11T10:15:30Z"), online.getLastSeenAt().get());
+        assertEquals("1.2.3", online.getPluginVersion().get());
+        assertEquals(Integer.valueOf(7), online.getPlayerCount().get());
+        assertEquals(51L, online.getReplayCount());
+
+        ServerInstance offline = servers.get(1);
+        assertEquals(ServerStatus.OFFLINE, offline.getStatus());
+        assertFalse(offline.getLastSeenAt().isPresent());
+        assertFalse(offline.getPluginVersion().isPresent());
+        assertFalse(offline.getPlayerCount().isPresent());
+        assertEquals(4L, offline.getReplayCount());
+        assertThrows(UnsupportedOperationException.class, () -> servers.clear());
+        assertEquals(BASE + "/v1/api/servers", transport.lastRequest().getUrl());
+    }
+
+    @Test
+    void successfulResponseWithInvalidShapeIsACheckedTransportFailure() {
+        RecordingTransport transport = new RecordingTransport().enqueue(200, "{\"servers\":{}}");
+
+        ReplayCoreTransportException failure = assertThrows(
+                ReplayCoreTransportException.class,
+                () -> clientWith(transport).listServers());
+
+        assertTrue(failure.getCause() instanceof uk.co.forgevector.replaycore.api.internal.JsonParseException);
     }
 
     @Test

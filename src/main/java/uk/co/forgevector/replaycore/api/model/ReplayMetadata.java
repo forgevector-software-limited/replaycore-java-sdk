@@ -98,10 +98,10 @@ public final class ReplayMetadata {
     }
 
     /**
-     * Returns the identifier of the tenant that owns this replay. Always the
-     * caller's own tenant, because every keyed request is tenant-scoped.
+     * Returns the account identifier that owns this replay. Always the caller's
+     * own account, because every keyed request is account-scoped.
      *
-     * @return the tenant id, or an empty optional if the server omitted it
+     * @return the account id, or an empty optional if the server omitted it
      */
     public Optional<String> getTenantId() {
         return Optional.ofNullable(tenantId);
@@ -127,7 +127,7 @@ public final class ReplayMetadata {
 
     /**
      * Returns the owner-set display name for this replay, when one has been
-     * assigned in the panel. When absent, the panel derives a name from the
+     * assigned in the dashboard. When absent, the dashboard derives a name from the
      * server label, game mode and date.
      *
      * @return the display name, or an empty optional
@@ -453,9 +453,9 @@ public final class ReplayMetadata {
         }
 
         /**
-         * Sets the owning tenant id.
+         * Sets the owning account id.
          *
-         * @param v the tenant id
+         * @param v the account id
          * @return this builder
          */
         public Builder tenantId(String v) { this.tenantId = v; return this; }

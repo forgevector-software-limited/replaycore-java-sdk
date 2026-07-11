@@ -16,6 +16,8 @@ import uk.co.forgevector.replaycore.api.model.Participant;
 import uk.co.forgevector.replaycore.api.model.Quality;
 import uk.co.forgevector.replaycore.api.model.ReplayMetadata;
 import uk.co.forgevector.replaycore.api.model.ReplayPage;
+import uk.co.forgevector.replaycore.api.model.ServerInstance;
+import uk.co.forgevector.replaycore.api.model.ServerStatus;
 import uk.co.forgevector.replaycore.api.model.StorageTier;
 import uk.co.forgevector.replaycore.api.model.TimelineMarker;
 import uk.co.forgevector.replaycore.api.model.Visibility;
@@ -114,6 +116,41 @@ public final class ModelMapper {
     }
 
     /**
+     * Maps a connected-servers response.
+     *
+     * @param obj the parsed JSON object containing a {@code servers} array
+     * @return the server instances in response order
+     */
+    public static List<ServerInstance> toServerInstances(Map<String, Object> obj) {
+        Object raw = obj.get("servers");
+        if (!(raw instanceof List)) {
+            throw new JsonParseException("server list response is missing the 'servers' array");
+        }
+        List<ServerInstance> servers = new ArrayList<ServerInstance>();
+        for (Object element : (List<?>) raw) {
+            if (!(element instanceof Map)) {
+                throw new JsonParseException("server list contains a non-object entry");
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> server = (Map<String, Object>) element;
+            String id = str(server, "id");
+            String name = str(server, "name");
+            if (id == null || name == null) {
+                throw new JsonParseException("server entry is missing 'id' or 'name'");
+            }
+            servers.add(new ServerInstance(
+                    id,
+                    name,
+                    ServerStatus.fromWire(str(server, "status")),
+                    instant(server, "lastSeenAt"),
+                    str(server, "pluginVersion"),
+                    intOrNull(server, "playerCount"),
+                    longValue(server, "replayCount", 0L)));
+        }
+        return java.util.Collections.unmodifiableList(servers);
+    }
+
+    /**
      * Maps a timeline-marker creation response.
      *
      * @param obj the parsed JSON object for the created marker
@@ -167,6 +204,14 @@ public final class ModelMapper {
             return ((Double) v).longValue();
         }
         return null;
+    }
+
+    private static Integer intOrNull(Map<String, Object> obj, String key) {
+        Long value = longOrNull(obj, key);
+        if (value == null || value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
+            return null;
+        }
+        return value.intValue();
     }
 
     private static long longValue(Map<String, Object> obj, String key, long fallback) {

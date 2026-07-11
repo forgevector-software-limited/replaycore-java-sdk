@@ -7,12 +7,12 @@ package uk.co.forgevector.replaycore.api.exception;
 
 /**
  * Raised for HTTP 404 responses: the requested resource does not exist within the
- * caller's tenant.
+ * caller's ReplayCore account.
  *
- * <p>Because every keyed request is tenant-scoped, a replay that belongs to a
- * different tenant is indistinguishable from one that was never created &mdash;
+ * <p>Because every keyed request is account-scoped, a replay that belongs to a
+ * different account is indistinguishable from one that was never created &mdash;
  * both yield this exception with code {@code REPLAY_NOT_FOUND}. This is by design:
- * it prevents a caller from probing for the existence of other tenants' replays.
+ * it prevents a caller from probing for the existence of other accounts' replays.
  */
 public class NotFoundException extends ReplayCoreApiException {
 

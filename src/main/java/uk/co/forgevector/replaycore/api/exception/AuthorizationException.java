@@ -11,7 +11,7 @@ package uk.co.forgevector.replaycore.api.exception;
  * that only holds {@code replays:read}).
  *
  * <p>The remedy is to issue a key with the missing scope from the ReplayCore
- * panel; it is never something the SDK can work around at runtime.
+ * dashboard; it is never something the SDK can work around at runtime.
  */
 public class AuthorizationException extends ReplayCoreApiException {
 

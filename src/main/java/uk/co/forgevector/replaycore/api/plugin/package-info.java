@@ -18,8 +18,7 @@
  *       recorder writes, so a plugin's marker renders on the viewer's scrubber exactly like a built-in
  *       event.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.RecordingControlApi}: read whether recording is
- *       live, the current tick, and the active session (control verbs are on the roadmap, each gated
- *       behind server config or permission).</li>
+ *       live, the current tick, and the active session.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreClipApi}: save an on-demand clip from
  *       code, the in-process twin of {@code /replaycore save}. Present only when clips are enabled.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.KillReplayApi}: resolve a player's most recent
@@ -35,7 +34,7 @@
  *
  * <p>The contract is read and annotate only: an addon may observe sessions, annotate the timeline, and ask
  * for a clip of a recording the host already chose to capture. It cannot start, stop, download, delete, or
- * read the bytes of a recording, and it cannot reach another tenant. Those operations stay with the
+ * read the bytes of a recording, and it cannot reach another account. Those operations stay with the
  * authenticated REST surface ({@link uk.co.forgevector.replaycore.api.client.ReplayCoreClient}) and the
  * server-side capture policy, which keeps the addon surface free of any privilege-escalation path.
  */

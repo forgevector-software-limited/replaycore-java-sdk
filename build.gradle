@@ -9,8 +9,12 @@ plugins {
 }
 
 group = 'uk.co.forgevector'
-version = '1.1.2'
+def releasePom = new XmlSlurper(false, false).parse(file('pom.xml'))
+version = releasePom.version.text()
 description = 'Official Java SDK for the ReplayCore developer API.'
+
+def junitVersion = releasePom.properties.'junit.version'.text()
+def junitPlatformVersion = releasePom.properties.'junit.platform.version'.text()
 
 java {
     // The Minecraft plugin ecosystem still ships servers on Java 8, so the SDK
@@ -31,19 +35,81 @@ repositories {
 dependencies {
     // The runtime SDK has zero third-party dependencies: it uses only the JDK.
     // Test dependencies are not shipped.
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+    testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:${junitPlatformVersion}"
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+    systemProperty 'replaycore.sdk.version', project.version.toString()
     testLogging {
         events 'passed', 'skipped', 'failed'
     }
 }
 
+tasks.named('jar') {
+    manifest {
+        attributes(
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version,
+                'Implementation-Vendor': 'ForgeVector Software Limited')
+    }
+}
+
+tasks.register('verifyReleaseMetadata') {
+    group = 'verification'
+    description = 'Checks that public dependency examples and runtime metadata match the release version.'
+    inputs.files('pom.xml', 'README.md', 'docs/api-reference.md',
+            'src/main/java/uk/co/forgevector/replaycore/api/client/ReplayCoreClientBuilder.java')
+
+    doLast {
+        String expected = project.version.toString()
+        String readme = file('README.md').getText('UTF-8')
+        String apiReference = file('docs/api-reference.md').getText('UTF-8')
+        String builder = file('src/main/java/uk/co/forgevector/replaycore/api/client/ReplayCoreClientBuilder.java')
+                .getText('UTF-8')
+
+        def gradleCoordinate = (readme =~ /replaycore-java-sdk:v([0-9]+\.[0-9]+\.[0-9]+)/)
+        def mavenCoordinate = (readme =~ /<version>v([0-9]+\.[0-9]+\.[0-9]+)<\/version>/)
+        if (!gradleCoordinate.find() || !mavenCoordinate.find()) {
+            throw new GradleException('README must contain both Gradle and Maven release coordinates')
+        }
+        String documentedRelease = gradleCoordinate.group(1)
+        if (mavenCoordinate.group(1) != documentedRelease) {
+            throw new GradleException('README Gradle and Maven release coordinates disagree')
+        }
+        if (!expected.endsWith('-SNAPSHOT') && documentedRelease != expected) {
+            throw new GradleException("README release coordinate is not ${expected}")
+        }
+        if (!readme.contains("`${expected}`") || !apiReference.contains("`${expected}`")) {
+            throw new GradleException("Public source documentation does not identify version ${expected}")
+        }
+        if (!builder.contains("SDK_VERSION = \"${expected}\"")) {
+            throw new GradleException("Runtime SDK version does not match pom.xml (${expected})")
+        }
+    }
+}
+
+tasks.register('verifyNoRuntimeDependencies') {
+    group = 'verification'
+    description = 'Prevents third-party libraries from leaking into the published runtime contract.'
+
+    doLast {
+        def dependencies = configurations.runtimeClasspath.allDependencies
+        if (!dependencies.empty) {
+            throw new GradleException("Runtime dependencies are not allowed: ${dependencies}")
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyReleaseMetadata')
+    dependsOn tasks.named('verifyNoRuntimeDependencies')
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xpkginfo:always'
     // Treat warnings as errors to keep the public surface clean, but silence the
     // benign "source/target 8 is obsolete" notice a newer toolchain JDK emits.
     options.compilerArgs << '-Xlint:all' << '-Xlint:-options' << '-Werror'

@@ -7,6 +7,7 @@ package uk.co.forgevector.replaycore.api.client;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 import uk.co.forgevector.replaycore.api.exception.AuthenticationException;
@@ -26,13 +27,14 @@ import uk.co.forgevector.replaycore.api.internal.Urls;
 import uk.co.forgevector.replaycore.api.model.ReplayMetadata;
 import uk.co.forgevector.replaycore.api.model.ReplayPage;
 import uk.co.forgevector.replaycore.api.model.ReplayQuery;
+import uk.co.forgevector.replaycore.api.model.ServerInstance;
 import uk.co.forgevector.replaycore.api.model.TimelineEventRequest;
 import uk.co.forgevector.replaycore.api.model.TimelineMarker;
 
 /**
  * The synchronous entry point to ReplayCore's public developer API.
  *
- * <p>A client is configured once, with a base URL and a server-owner-scoped API
+ * <p>A client is configured once, with a base URL and an account-scoped API
  * key, and is then safe to share and call concurrently from any number of
  * threads. Build one with {@link #builder()}:
  *
@@ -48,10 +50,10 @@ import uk.co.forgevector.replaycore.api.model.TimelineMarker;
  * }
  * }</pre>
  *
- * <h2>Authentication and tenant scoping</h2>
+ * <h2>Authentication and account scoping</h2>
  * Every request is sent with {@code Authorization: Bearer <apiKey>}. The API key
- * binds the request to exactly one tenant on the server side; this client cannot
- * widen that scope, name another tenant, or reach an admin endpoint. The key is
+ * binds the request to exactly one ReplayCore account on the server side; this client cannot
+ * widen that scope, name another account, or reach an admin endpoint. The key is
  * the only secret the SDK holds, and it is never logged or echoed.
  *
  * <h2>Errors</h2>
@@ -64,9 +66,9 @@ import uk.co.forgevector.replaycore.api.model.TimelineMarker;
  *
  * <h2>Coverage</h2>
  * This client wraps the endpoints ReplayCore exposes to API-key holders today:
- * listing and reading replay metadata, and writing custom timeline markers.
- * Downloads, server listing and analytics are not part of the key-authed surface
- * at the time of writing; see the SDK documentation for the current scope.
+ * listing and reading replay metadata, listing connected server instances, and
+ * writing custom timeline markers. See the SDK documentation for the current
+ * scope.
  */
 public final class ReplayCoreClient {
 
@@ -95,7 +97,7 @@ public final class ReplayCoreClient {
     }
 
     /**
-     * Lists replays in the caller's tenant, newest first, applying the supplied
+     * Lists replays in the caller's ReplayCore account, newest first, applying the supplied
      * filters.
      *
      * <p>Results are paginated with opaque cursors. When the returned page reports
@@ -110,7 +112,7 @@ public final class ReplayCoreClient {
      *                                 or expired (HTTP 401)
      * @throws AuthorizationException  if the key lacks the {@code replays:read}
      *                                 scope (HTTP 403)
-     * @throws RateLimitException      if the tenant's read rate limit is exceeded
+     * @throws RateLimitException      if the account's read rate limit is exceeded
      *                                 (HTTP 429)
      * @throws ReplayCoreApiException  for any other non-success status
      * @throws ReplayCoreTransportException if the server cannot be reached
@@ -125,7 +127,11 @@ public final class ReplayCoreClient {
                 query.toQueryParameters());
         HttpResponse response = send("GET", url, null);
         Map<String, Object> obj = parseObject(response);
-        return ModelMapper.toReplayPage(obj);
+        try {
+            return ModelMapper.toReplayPage(obj);
+        } catch (JsonParseException e) {
+            throw invalidResponse(e);
+        }
     }
 
     /**
@@ -134,12 +140,12 @@ public final class ReplayCoreClient {
      * @param replayId the replay's UUID; must not be {@code null} or blank
      * @return the replay metadata
      * @throws NotFoundException       if no such replay exists in the caller's
-     *                                 tenant (HTTP 404)
+     *                                 account (HTTP 404)
      * @throws AuthenticationException if the API key is missing, invalid, revoked
      *                                 or expired (HTTP 401)
      * @throws AuthorizationException  if the key lacks the {@code replays:read}
      *                                 scope (HTTP 403)
-     * @throws RateLimitException      if the tenant's read rate limit is exceeded
+     * @throws RateLimitException      if the account's read rate limit is exceeded
      *                                 (HTTP 429)
      * @throws ReplayCoreApiException  for any other non-success status
      * @throws ReplayCoreTransportException if the server cannot be reached
@@ -152,7 +158,36 @@ public final class ReplayCoreClient {
         String url = Urls.join(baseUrl, "/v1/api/replays/" + Urls.encodePathSegment(replayId));
         HttpResponse response = send("GET", url, null);
         Map<String, Object> obj = parseObject(response);
-        return ModelMapper.toReplayMetadata(obj);
+        try {
+            return ModelMapper.toReplayMetadata(obj);
+        } catch (JsonParseException e) {
+            throw invalidResponse(e);
+        }
+    }
+
+    /**
+     * Lists the Minecraft server instances connected to the caller's ReplayCore
+     * account.
+     *
+     * @return an unmodifiable list of connected server instances
+     * @throws AuthenticationException if the API key is missing, invalid, revoked
+     *                                 or expired (HTTP 401)
+     * @throws AuthorizationException  if the key lacks the {@code servers:read}
+     *                                 scope (HTTP 403)
+     * @throws RateLimitException      if the account's read rate limit is exceeded
+     *                                 (HTTP 429)
+     * @throws ReplayCoreApiException  for any other non-success status
+     * @throws ReplayCoreTransportException if the server cannot be reached
+     * @throws ReplayCoreException     base type for all of the above
+     */
+    public List<ServerInstance> listServers() throws ReplayCoreException {
+        String url = Urls.join(baseUrl, "/v1/api/servers");
+        HttpResponse response = send("GET", url, null);
+        try {
+            return ModelMapper.toServerInstances(parseObject(response));
+        } catch (JsonParseException e) {
+            throw invalidResponse(e);
+        }
     }
 
     /**
@@ -170,7 +205,7 @@ public final class ReplayCoreClient {
      *                                 or expired (HTTP 401)
      * @throws AuthorizationException  if the key lacks the {@code replays:write}
      *                                 scope (HTTP 403)
-     * @throws RateLimitException      if the tenant's write rate limit is exceeded
+     * @throws RateLimitException      if the account's write rate limit is exceeded
      *                                 (HTTP 429)
      * @throws ReplayCoreApiException  for any other non-success status (for
      *                                 example {@code TOO_MANY_MARKERS}, HTTP 409)
@@ -185,7 +220,11 @@ public final class ReplayCoreClient {
         String body = Json.write(request.toBody());
         HttpResponse response = send("POST", url, body);
         Map<String, Object> obj = parseObject(response);
-        return ModelMapper.toTimelineMarker(obj);
+        try {
+            return ModelMapper.toTimelineMarker(obj);
+        } catch (JsonParseException e) {
+            throw invalidResponse(e);
+        }
     }
 
     private HttpResponse send(String method, String url, String body) throws ReplayCoreException {
@@ -225,6 +264,11 @@ public final class ReplayCoreClient {
         } catch (JsonParseException e) {
             throw new ReplayCoreTransportException("could not parse ReplayCore response: " + e.getMessage(), e);
         }
+    }
+
+    private static ReplayCoreTransportException invalidResponse(JsonParseException cause) {
+        return new ReplayCoreTransportException(
+                "could not parse ReplayCore response: " + cause.getMessage(), cause);
     }
 
     private ReplayCoreApiException toApiException(HttpResponse response) {
