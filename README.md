@@ -25,9 +25,12 @@ a Bukkit, Spigot, Paper or Folia plugin.
 Releases are distributed through [JitPack](https://jitpack.io). Add the JitPack
 repository, then the dependency.
 
-The latest tagged release is `v1.1.2`. The `main` source tree currently identifies
-as `1.2.0-SNAPSHOT`; its connected-server client is not part of `v1.1.2`. Use a
-tagged release for production rather than a mutable branch build.
+The latest tagged release is `v1.2.0`, which reports SDK version `1.2.0` and
+tracks the matching ReplayCore product release. Use a tagged release for
+production rather than a mutable branch build.
+
+Some earlier product documentation named a `v1.1.5` coordinate. That tag was
+never published, so a build depending on it cannot resolve. Move to `v1.2.0`.
 
 **Gradle**
 
@@ -37,7 +40,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.1.2'
+    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.2.0'
 }
 ```
 
@@ -54,7 +57,7 @@ dependencies {
 <dependency>
     <groupId>com.github.forgevector-software-limited</groupId>
     <artifactId>replaycore-java-sdk</artifactId>
-    <version>v1.1.2</version>
+    <version>v1.2.0</version>
 </dependency>
 ```
 
@@ -189,7 +192,32 @@ control. See [`docs/security.md`](docs/security.md) for the operating guidance.
 Alongside the REST client, the SDK ships the supported in-process extension
 contract (package `uk.co.forgevector.replaycore.api.plugin`) for plugins running
 on the same server as ReplayCore. It covers recording state and lifecycle,
-timeline bookmarks, clips, and recent kill-replay links. See
+timeline bookmarks, clips, recent kill-replay links, and match scopes. See
+[`docs/plugin-extensions.md`](docs/plugin-extensions.md).
+
+### Match scopes
+
+Most game-mode servers never restart between games: one arena backend runs
+matches back to back, or several at once. `ReplayCoreMatchApi` marks where each
+game starts and ends on the one continuous recording, so each game is published
+as its own replay without the recorder ever stopping. Because a scope is a
+tick-window rather than a recording control, several can be open at the same
+time, and the death-cam keeps working throughout.
+
+```java
+ReplayCoreApi api = ReplayCoreProvider.get()
+        .orElseThrow(() -> new IllegalStateException("ReplayCore not present"));
+
+api.matches().ifPresent(matches -> matches.beginScope(
+        BeginScopeRequest.builder(matchId, matchId, "duels", "ranked-1v1", "post-match")
+                .participants(Arrays.asList(
+                        ReplayParticipant.builder(steve, "Steve").build(),
+                        ReplayParticipant.builder(alex, "Alex").build()))
+                .build())
+        .thenAccept(scope -> scopeIds.put(matchId, scope.scopeId())));
+```
+
+Full worked example, including ending the scope and reading the outcome, in
 [`docs/plugin-extensions.md`](docs/plugin-extensions.md).
 
 ## Documentation

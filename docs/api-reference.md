@@ -5,8 +5,8 @@ REST endpoints it wraps. It reflects the endpoints ReplayCore exposes to API-key
 holders today; see [Endpoint coverage](#endpoint-coverage) for the current
 boundary.
 
-This page follows the `1.2.0-SNAPSHOT` source on `main`. The latest tagged release
-and its matching documentation remain available from that release's Git tag.
+This page documents the `1.2.0` release. Documentation for earlier releases
+remains available from each release's Git tag.
 
 The generated Javadoc is the authoritative, method-level reference. Build it with
 `./gradlew javadoc` and open `build/docs/javadoc/index.html`.
@@ -240,3 +240,27 @@ status) over the human-readable `detail`.
 The SDK deliberately wraps only the documented public developer API. Dashboard,
 recorder, and administrative routes use separate access models and are outside
 this SDK's contract.
+
+---
+
+## In-process plugin contract
+
+The package `uk.co.forgevector.replaycore.api.plugin` is a separate, non-REST
+surface for plugins running on the same server as the recorder. It carries no
+API key and makes no HTTP call; the running ReplayCore plugin supplies the
+implementations.
+
+| Surface | Availability | Purpose |
+| --- | --- | --- |
+| `ReplayCoreTimelineApi` | Always | Tag a custom event onto the live recording. |
+| `RecordingControlApi` | Always | Read whether recording is live, the current tick, and the active session. |
+| `ReplayCoreClipApi` | `Optional` | Save an on-demand clip. |
+| `KillReplayApi` | `Optional` | Resolve a player's most recent death replay. |
+| `ReplayCoreMatchApi` | `Optional` | Open, update and end a logical match scope over the continuous recording. |
+
+`ReplayCoreMatchApi` is how a server that does not restart between games
+publishes one replay per game: `beginScope` and `endScope` mark a tick-window on
+the recording without starting, stopping or cutting it, so scopes can overlap and
+death cams keep working throughout. See
+[Plugin extensions](plugin-extensions.md) for the worked example, and
+`FakeReplayCoreMatchApi` for testing an integration without a recorder.

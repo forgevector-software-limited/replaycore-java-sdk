@@ -12,8 +12,8 @@ import java.util.Optional;
  *
  * <p>Resolve it through {@link ReplayCoreProvider#get()} (or Bukkit's services manager) after the recorder
  * plugin has enabled, for example from your own plugin's enable step, ordered after ReplayCore. From here
- * an addon reaches the timeline, recording-state, clip and kill-replay surfaces, and registers lifecycle
- * listeners.
+ * an addon reaches the timeline, recording-state, clip, kill-replay and network-integration match surfaces,
+ * and registers lifecycle listeners.
  *
  * <p>Each sub-API is handed back so capability negotiation is built in: the always-present surfaces return
  * directly, while the optional ones return an {@link Optional} that is empty when this recorder build or
@@ -85,6 +85,25 @@ public interface ReplayCoreApi {
      * @return the kill-replay API, or an empty optional when the feature is disabled
      */
     Optional<KillReplayApi> killReplay();
+
+    /**
+     * Returns the network-integration match surface for opening, updating and ending logical match scopes
+     * over the shared recording, present only when this server has network-integration scopes enabled and
+     * cloud upload configured.
+     *
+     * <p>This is a {@code default} method rather than an abstract one on purpose. This interface is a
+     * published contract that addons and their test doubles already implement, so declaring a new
+     * abstract method here would break every existing implementor at compile time and at link time.
+     * Defaulting to an empty optional keeps that compatibility and reads correctly besides: a recorder
+     * that predates this surface genuinely does not offer it, which is exactly what an empty optional
+     * already means for the other negotiated capabilities.
+     *
+     * @return the match API, or an empty optional when network-integration scopes are unavailable on this
+     *         server
+     */
+    default Optional<ReplayCoreMatchApi> matches() {
+        return Optional.empty();
+    }
 
     /**
      * Registers a lifecycle listener. Registering the same instance twice has no additional effect.

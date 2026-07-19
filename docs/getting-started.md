@@ -87,3 +87,7 @@ section and [`api-reference.md`](api-reference.md) for the full list.
 
 - Read the [API reference](api-reference.md) for every method, model and field.
 - Read the [security model](security.md) before deploying.
+- If your plugin runs on the same server as the recorder, read
+  [plugin extensions](plugin-extensions.md) for the in-process contract. It
+  covers timeline bookmarks, clips, death-replay links, and match scopes for
+  marking each game on a server that never restarts between games.

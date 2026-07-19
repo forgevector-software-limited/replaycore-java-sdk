@@ -23,18 +23,24 @@
  *       code, the in-process twin of {@code /replaycore save}. Present only when clips are enabled.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.KillReplayApi}: resolve a player's most recent
  *       death replay to surface in a custom death message.</li>
+ *   <li>{@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreMatchApi}: open, update and end a logical
+ *       match scope over the server's one continuous recording, so a server that never restarts between
+ *       games can still publish a separate replay per game. A scope is a tick-window, not a recording
+ *       control: opening or ending one never starts, stops, rotates or cuts the physical recording, so
+ *       several scopes can run at once. Present only when network-integration scopes are enabled.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.RecordingListener} and
  *       {@link uk.co.forgevector.replaycore.api.plugin.RecordingSession}: observe the session lifecycle
- *       (start, stop) on the server's main thread.</li>
+ *       (start, stop) on the server's main thread, and the eventual ready or failed outcome of a scope
+ *       finalisation.</li>
  * </ul>
  *
  * <p>Capability negotiation is built in: the umbrella hands back the always-present surfaces directly and
  * the optional ones as a {@link java.util.Optional}, so an addon detects what a given recorder build and
  * server config offer and degrades gracefully when ReplayCore is absent or a feature is off.
  *
- * <p>The contract is read and annotate only: an addon may observe sessions, annotate the timeline, and ask
- * for a clip of a recording the host already chose to capture. It cannot start, stop, download, delete, or
- * read the bytes of a recording, and it cannot reach another account. Those operations stay with the
+ * <p>The contract is read and annotate only: an addon may observe sessions, annotate the timeline, mark
+ * logical match boundaries, and ask for a clip of a recording the host already chose to capture. It cannot
+ * start, stop, download, delete, or read the bytes of a recording, and it cannot reach another account. Those operations stay with the
  * authenticated REST surface ({@link uk.co.forgevector.replaycore.api.client.ReplayCoreClient}) and the
  * server-side capture policy, which keeps the addon surface free of any privilege-escalation path.
  */
