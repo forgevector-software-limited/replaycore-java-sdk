@@ -40,4 +40,32 @@ public interface RecordingListener {
      */
     default void onRecordingStopped(RecordingSession session) {
     }
+
+    /**
+     * Invoked when a collection or asset opened through {@link ReplayCoreMatchApi} reaches
+     * {@link ProcessingState#READY}. This is how a network integration observes the eventual outcome of a
+     * {@link ReplayCoreMatchApi#endScope} call in-process, since the {@link java.util.concurrent.CompletionStage}
+     * that call returned may already have completed with an in-progress state (or the process that issued
+     * it may have restarted) by the time the true outcome is known.
+     *
+     * <p>Default no-op so an existing {@link RecordingListener} implementation remains source and binary
+     * compatible without overriding it.
+     *
+     * @param result the operation result describing what became ready; never {@code null}
+     */
+    default void onAssetReady(ReplayOperationResult result) {
+    }
+
+    /**
+     * Invoked when a collection or asset opened through {@link ReplayCoreMatchApi} reaches
+     * {@link ProcessingState#FAILED}. See {@link #onAssetReady} for why this in-process callback exists
+     * alongside the {@link java.util.concurrent.CompletionStage} returned by the originating call.
+     *
+     * <p>Default no-op so an existing {@link RecordingListener} implementation remains source and binary
+     * compatible without overriding it.
+     *
+     * @param result the operation result describing what failed; never {@code null}
+     */
+    default void onAssetFailed(ReplayOperationResult result) {
+    }
 }

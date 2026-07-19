@@ -12,8 +12,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -82,6 +86,56 @@ class PluginContractTest {
         assertFalse(api.clips().isPresent());
         assertFalse(api.killReplay().isPresent());
         assertEquals("1.1", api.apiVersion());
+    }
+
+    @Test
+    void matchSurfaceDefaultsToEmptyForImplementorsThatPredateIt() {
+        // NoOpApi deliberately does not override matches(). That it compiles at all is the
+        // source-compatibility guarantee; that it reports an empty optional is the runtime one.
+        assertFalse(new NoOpApi().matches().isPresent());
+    }
+
+    @Test
+    void fakeMatchApiDrivesBothDeliveryPaths() {
+        FakeReplayCoreMatchApi fake = new FakeReplayCoreMatchApi();
+        List<ReplayOperationResult> ready = new ArrayList<ReplayOperationResult>();
+        fake.registerListener(new RecordingListener() {
+            @Override
+            public void onAssetReady(ReplayOperationResult result) {
+                ready.add(result);
+            }
+        });
+
+        ReplayScope scope = fake.beginScope(BeginScopeRequest
+                        .builder("begin:m1", "m1", "duels", "ranked-1v1", "post-match")
+                        .participants(Collections.singletonList(
+                                ReplayParticipant.builder(UUID.randomUUID(), "Steve").build()))
+                        .build())
+                .toCompletableFuture().join();
+        assertEquals("m1", scope.externalMatchId());
+
+        // A repeated idempotency key returns the original scope rather than opening a second one.
+        ReplayScope repeated = fake.beginScope(BeginScopeRequest
+                        .builder("begin:m1", "m1", "duels", "ranked-1v1", "post-match").build())
+                .toCompletableFuture().join();
+        assertEquals(scope.scopeId(), repeated.scopeId());
+
+        // endScope stays pending until the test drives it to a terminal outcome.
+        CompletionStage<FinalizeResult> finalizing = fake.endScope(scope.scopeId(),
+                EndScopeRequest.builder("end:m1")
+                        .teams(Collections.singletonList(
+                                ReplayTeam.builder("red").result("won").placement(1).build()))
+                        .build());
+        assertFalse(finalizing.toCompletableFuture().isDone());
+
+        fake.completeReady(scope.scopeId(), "asset-1", "https://api.replaycore.com/a/asset-1", null);
+
+        FinalizeResult result = finalizing.toCompletableFuture().join();
+        assertEquals(ProcessingState.READY, result.processingState());
+        assertEquals("asset-1", result.assetId().get());
+        // The same outcome is delivered on the listener path, for a caller that has since restarted.
+        assertEquals(1, ready.size());
+        assertEquals(ProcessingState.READY, ready.get(0).processingState());
     }
 
     @Test
