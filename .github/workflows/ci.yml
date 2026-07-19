@@ -29,6 +29,17 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
+      - name: Resolve release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          # pom.xml is the single source of the version; build.gradle reads it too.
+          # Hardcoding it here made the artifact checks fail on every release commit.
+          version="$(grep -m1 -oP '(?<=<version>)[^<]+' pom.xml)"
+          test -n "$version"
+          echo "SDK_VERSION=$version" >> "$GITHUB_ENV"
+          echo "Resolved SDK version: $version"
+
       - name: Set up Java 8
         uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
         with:
@@ -47,11 +58,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          jar_path="build/libs/replaycore-java-sdk-1.2.0-SNAPSHOT.jar"
+          jar_path="build/libs/replaycore-java-sdk-${SDK_VERSION}.jar"
           test -s "$jar_path"
           major="$(javap -verbose -classpath "$jar_path" uk.co.forgevector.replaycore.api.client.ReplayCoreClient | awk '/major version:/ {print $3}')"
           test "$major" = "52"
-          unzip -p "$jar_path" META-INF/MANIFEST.MF | grep -Fqx $'Implementation-Version: 1.2.0-SNAPSHOT\r'
+          unzip -p "$jar_path" META-INF/MANIFEST.MF | grep -Fqx "$(printf 'Implementation-Version: %s\r' "$SDK_VERSION")"
 
       - name: Set up Java 17 for Maven release checks
         uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
@@ -67,12 +78,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gradle_jar="build/libs/replaycore-java-sdk-1.2.0-SNAPSHOT.jar"
-          maven_jar="target/replaycore-java-sdk-1.2.0-SNAPSHOT.jar"
+          gradle_jar="build/libs/replaycore-java-sdk-${SDK_VERSION}.jar"
+          maven_jar="target/replaycore-java-sdk-${SDK_VERSION}.jar"
           test -s "$maven_jar"
           major="$(javap -verbose -classpath "$maven_jar" uk.co.forgevector.replaycore.api.client.ReplayCoreClient | awk '/major version:/ {print $3}')"
           test "$major" = "52"
-          unzip -p "$maven_jar" META-INF/MANIFEST.MF | grep -Fqx $'Implementation-Version: 1.2.0-SNAPSHOT\r'
+          unzip -p "$maven_jar" META-INF/MANIFEST.MF | grep -Fqx "$(printf 'Implementation-Version: %s\r' "$SDK_VERSION")"
           jar tf "$gradle_jar" | grep '\.class$' | LC_ALL=C sort > /tmp/gradle-classes.txt
           jar tf "$maven_jar" | grep '\.class$' | LC_ALL=C sort > /tmp/maven-classes.txt
           diff -u /tmp/gradle-classes.txt /tmp/maven-classes.txt
