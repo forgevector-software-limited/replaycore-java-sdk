@@ -18,13 +18,13 @@ package uk.co.forgevector.replaycore.api.exception;
  * <p>For the convenience of common control flow, the SDK promotes the most
  * frequent conditions to dedicated subtypes:
  * <ul>
- *   <li>{@link AuthenticationException} &mdash; 401 (missing, invalid, revoked or
+ *   <li>{@link AuthenticationException}: 401 (missing, invalid, revoked or
  *       expired key).</li>
- *   <li>{@link AuthorizationException} &mdash; 403 (the key lacks the scope the
+ *   <li>{@link AuthorizationException}: 403 (the key lacks the scope the
  *       endpoint requires).</li>
- *   <li>{@link NotFoundException} &mdash; 404 (no such replay, or it belongs to a
+ *   <li>{@link NotFoundException}: 404 (no such replay, or it belongs to a
  *       different account and is therefore invisible).</li>
- *   <li>{@link RateLimitException} &mdash; 429 (per-account rate limit; carries the
+ *   <li>{@link RateLimitException}: 429 (per-account rate limit; carries the
  *       advised retry delay).</li>
  * </ul>
  * Any other status surfaces as a plain {@code ReplayCoreApiException}.

@@ -22,7 +22,7 @@ public interface RecordingSession {
 
     /**
      * Returns the stable session identifier for this recording, matching the
-     * RFC-0006 {@code session_id} that segmented replays expose through the REST
+     * {@code session_id} that segmented replays expose through the REST
      * API. For an addon, this is the join key between an in-process session and
      * the replay metadata it can later fetch with the REST client.
      *

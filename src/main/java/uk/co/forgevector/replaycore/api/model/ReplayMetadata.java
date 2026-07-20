@@ -330,7 +330,7 @@ public final class ReplayMetadata {
     }
 
     /**
-     * Returns the RFC-0006 storage layout. {@code "segmented"} indicates the
+     * Returns the storage layout. {@code "segmented"} indicates the
      * recording was rotated into a linked sequence of session segments; absent
      * for an ordinary single-archive replay.
      *
@@ -341,7 +341,7 @@ public final class ReplayMetadata {
     }
 
     /**
-     * Returns whether this replay is stored as a segmented RFC-0006 session.
+     * Returns whether this replay is stored as a segmented session.
      *
      * @return {@code true} if {@code storageMode} is {@code "segmented"}
      */
@@ -350,7 +350,7 @@ public final class ReplayMetadata {
     }
 
     /**
-     * Returns the stable RFC-0006 session identifier shared by every segment of a
+     * Returns the stable session identifier shared by every segment of a
      * segmented replay. Present only for segmented replays.
      *
      * @return the session id, or an empty optional
@@ -637,7 +637,7 @@ public final class ReplayMetadata {
         public Builder participants(List<Participant> v) { this.participants = v; return this; }
 
         /**
-         * Sets the RFC-0006 storage mode.
+         * Sets the storage mode.
          *
          * @param v the storage mode
          * @return this builder
@@ -645,7 +645,7 @@ public final class ReplayMetadata {
         public Builder storageMode(String v) { this.storageMode = v; return this; }
 
         /**
-         * Sets the RFC-0006 session id.
+         * Sets the session id.
          *
          * @param v the session id
          * @return this builder

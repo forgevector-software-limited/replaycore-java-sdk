@@ -9,7 +9,7 @@ import java.util.concurrent.CompletionStage;
 
 /**
  * Programmatic surface for a network integration to open, update and end a logical match scope over the
- * server's one continuous recording, the in-process twin of the network-integration REST surface (RFC-0009).
+ * server's one continuous recording, the in-process twin of the network-integration REST surface.
  * A scope is a tick-window over the recording, independent of any other scope open at the same time:
  * beginning or ending a scope never starts, stops, rotates or cuts the physical recording, which is the
  * decisive difference from the existing arena/duel rotation behaviour and is what lets dozens of scopes run

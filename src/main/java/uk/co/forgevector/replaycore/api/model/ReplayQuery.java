@@ -18,9 +18,9 @@ import java.util.Map;
  * unconfigured query (just {@link Builder#build()}) lists the most recent
  * replays at the default page size.
  *
- * <p>The builder validates bounds up front &mdash; page size 1&ndash;100,
+ * <p>The builder validates bounds up front: page size 1&ndash;100,
  * duration 0&ndash;86&nbsp;400&nbsp;000&nbsp;ms, the mutually-exclusive
- * {@code player} / {@code playerUuid} pair, and a coherent time range &mdash; so
+ * {@code player} / {@code playerUuid} pair, and a coherent time range, so
  * invalid input fails fast in the caller's own JVM rather than after a network
  * round trip. These mirror the server's own validation.
  */
