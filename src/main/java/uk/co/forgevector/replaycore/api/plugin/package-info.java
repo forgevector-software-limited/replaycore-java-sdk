@@ -36,7 +36,9 @@
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.RecordingListener} and
  *       {@link uk.co.forgevector.replaycore.api.plugin.RecordingSession}: observe the session lifecycle
  *       (start, stop) on the server's main thread, and the eventual ready or failed outcome of a scope
- *       finalisation.</li>
+ *       finalisation on the finalisation worker. The two are not the same thread; see
+ *       {@link uk.co.forgevector.replaycore.api.plugin.RecordingListener} before touching the platform
+ *       API from a callback.</li>
  * </ul>
  *
  * <p>Capability negotiation is built in: the umbrella hands back the always-present surfaces directly and
