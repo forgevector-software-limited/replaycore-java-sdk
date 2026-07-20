@@ -10,11 +10,11 @@ package uk.co.forgevector.replaycore.api.exception;
  *
  * <p>Two broad families extend this class:
  * <ul>
- *   <li>{@link ReplayCoreApiException} &mdash; the server answered, but with a
+ *   <li>{@link ReplayCoreApiException}: the server answered, but with a
  *       non-success status (4xx/5xx). It carries the parsed problem detail so a
  *       caller can branch on {@link ReplayCoreApiException#getCode()} or the HTTP
  *       status.</li>
- *   <li>{@link ReplayCoreTransportException} &mdash; the request never produced a
+ *   <li>{@link ReplayCoreTransportException}: the request never produced a
  *       usable response (DNS failure, connection refused, socket timeout,
  *       malformed body). It wraps the underlying I/O cause.</li>
  * </ul>

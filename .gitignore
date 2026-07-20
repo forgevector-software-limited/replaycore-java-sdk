@@ -21,7 +21,7 @@ bin/
 .DS_Store
 Thumbs.db
 
-# Local credentials — never commit an API key
+# Local credentials: never commit an API key
 *.env
 .env
 local.properties

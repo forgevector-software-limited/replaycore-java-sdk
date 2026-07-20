@@ -26,9 +26,9 @@ import uk.co.forgevector.replaycore.api.model.Visibility;
  * Converts parsed JSON trees (the {@link Map}/{@link List}/scalar shape that
  * {@link Json} produces) into the SDK's immutable model types.
  *
- * <p>This is an internal helper. It is deliberately lenient about field presence
- * &mdash; missing optional fields map to absent {@link java.util.Optional}s, and
- * unknown enum values map to the relevant {@code UNKNOWN} constant &mdash; so a
+ * <p>This is an internal helper. It is deliberately lenient about field presence:
+ * missing optional fields map to absent {@link java.util.Optional}s, and
+ * unknown enum values map to the relevant {@code UNKNOWN} constant, so a
  * forward-compatible server response never breaks an older SDK build.
  */
 public final class ModelMapper {
@@ -229,7 +229,8 @@ public final class ModelMapper {
         } catch (DateTimeParseException e) {
             // The cloud emits RFC3339, which Instant.parse accepts. A value it
             // cannot parse is treated as absent rather than failing the whole
-            // response, keeping the SDK robust against future format tweaks.
+            // response, so a future change to the timestamp format degrades to
+            // a missing value instead of an exception.
             return null;
         }
     }

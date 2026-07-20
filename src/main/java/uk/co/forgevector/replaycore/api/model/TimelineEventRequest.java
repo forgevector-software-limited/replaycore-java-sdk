@@ -16,9 +16,9 @@ import java.util.regex.Pattern;
  * (for example {@code "Final Death"}) at a given tick. Exactly one target must be
  * supplied:
  * <ul>
- *   <li>{@link Builder#replayId(String)} &mdash; pin the marker to an existing,
+ *   <li>{@link Builder#replayId(String)}: pin the marker to an existing,
  *       already-finalised replay; or</li>
- *   <li>{@link Builder#serverId(String)} &mdash; mark the server's
+ *   <li>{@link Builder#serverId(String)}: mark the server's
  *       <em>currently active</em> recording (useful for live tagging from a
  *       gameplay plugin).</li>
  * </ul>

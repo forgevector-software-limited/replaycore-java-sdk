@@ -58,7 +58,7 @@ import uk.co.forgevector.replaycore.api.model.TimelineMarker;
  *
  * <h2>Errors</h2>
  * A non-success HTTP status raises a {@link ReplayCoreApiException} (or one of its
- * dedicated subtypes &mdash; {@link AuthenticationException},
+ * dedicated subtypes: {@link AuthenticationException},
  * {@link AuthorizationException}, {@link NotFoundException},
  * {@link RateLimitException}). A failure to reach the server raises a
  * {@link ReplayCoreTransportException}. Both extend {@link ReplayCoreException},
