@@ -25,12 +25,12 @@ a Bukkit, Spigot, Paper or Folia plugin.
 Releases are distributed through [JitPack](https://jitpack.io). Add the JitPack
 repository, then the dependency.
 
-The latest tagged release is `v1.2.0`, which reports SDK version `1.2.0` and
+The latest tagged release is `v1.2.1`, which reports SDK version `1.2.1` and
 tracks the matching ReplayCore product release. Use a tagged release for
 production rather than a mutable branch build.
 
 Some earlier product documentation named a `v1.1.5` coordinate. That tag was
-never published, so a build depending on it cannot resolve. Move to `v1.2.0`.
+never published, so a build depending on it cannot resolve. Move to `v1.2.1`.
 
 **Gradle**
 
@@ -40,7 +40,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.2.0'
+    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.2.1'
 }
 ```
 
@@ -57,7 +57,7 @@ dependencies {
 <dependency>
     <groupId>com.github.forgevector-software-limited</groupId>
     <artifactId>replaycore-java-sdk</artifactId>
-    <version>v1.2.0</version>
+    <version>v1.2.1</version>
 </dependency>
 ```
 

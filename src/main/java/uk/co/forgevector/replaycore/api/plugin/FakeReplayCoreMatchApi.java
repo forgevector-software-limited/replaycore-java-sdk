@@ -32,10 +32,13 @@ import java.util.concurrent.atomic.AtomicLong;
  * callback, from a single deterministic driver call. Register a listener with {@link #registerListener} to
  * observe the latter.
  *
- * <p>Every call to {@link #beginScope}, {@link #updateScope} and {@link #endScope} is recorded verbatim and
- * available afterwards through {@link #beginScopeCalls()}, {@link #updateScopeCalls()} and
- * {@link #endScopeCalls()}, so a test can assert on exactly what an integration sent without standing up
- * any network or persistence layer. Idempotency is honoured exactly as the real backend documents it: a
+ * <p>Every call to {@link #beginScope}, {@link #updateScope}, {@link #endScope}, {@link #tagScopeEvent} and
+ * {@link #recordScopeClip} is recorded verbatim and available afterwards through {@link #beginScopeCalls()},
+ * {@link #updateScopeCalls()}, {@link #endScopeCalls()}, {@link #tagScopeEventCalls()} and
+ * {@link #recordScopeClipCalls()}, so a test can assert on exactly what an integration sent without standing
+ * up any network or persistence layer. The two scope-event recordings keep the scope id each call named,
+ * which is what lets a test covering concurrent matches assert that a marker or clip raised for one match
+ * was addressed to that match and no other. Idempotency is honoured exactly as the real backend documents it: a
  * repeated {@link BeginScopeRequest#idempotencyKey()} returns the original {@link ReplayScope}, and a
  * repeated {@link EndScopeRequest#idempotencyKey()} for the same scope returns the original (pending or
  * completed) finalize stage, rather than doing the work twice.
@@ -72,6 +75,8 @@ public final class FakeReplayCoreMatchApi implements ReplayCoreMatchApi {
     private final List<BeginScopeRequest> beginCalls = new CopyOnWriteArrayList<BeginScopeRequest>();
     private final List<RecordedUpdate> updateCalls = new CopyOnWriteArrayList<RecordedUpdate>();
     private final List<RecordedEnd> endCalls = new CopyOnWriteArrayList<RecordedEnd>();
+    private final List<RecordedScopeEvent> scopeEventCalls = new CopyOnWriteArrayList<RecordedScopeEvent>();
+    private final List<RecordedScopeClip> scopeClipCalls = new CopyOnWriteArrayList<RecordedScopeClip>();
     private final List<RecordingListener> listeners = new CopyOnWriteArrayList<RecordingListener>();
 
     private final ConcurrentHashMap<String, ReplayScope> scopesById = new ConcurrentHashMap<String, ReplayScope>();
@@ -143,6 +148,54 @@ public final class FakeReplayCoreMatchApi implements ReplayCoreMatchApi {
             endOperationsByScopeId.put(scopeId,
                     new EndOperation(operationId, request.idempotencyKey(), scope.collectionId(), future));
             return future;
+        }
+    }
+
+    /**
+     * Always {@code true}: this fixture implements the scope-addressed event surface, so an integration's
+     * own {@code if (matches.supportsScopeEvents())} startup branch takes the same path against this fake as
+     * it does against a current recorder. A fixture that reported {@code false} would let an integration's
+     * whole event path be skipped in its tests while working in production, or the reverse.
+     */
+    @Override
+    public boolean supportsScopeEvents() {
+        return true;
+    }
+
+    /**
+     * Records the call and completes immediately, matching the real backend's "accepted into a bounded
+     * buffer, delivered in the background" contract. Rejects an unknown or already-ended scope exactly as
+     * {@link #updateScope} does, so a test can exercise an integration's handling of a marker raised after
+     * its match ended.
+     */
+    @Override
+    public CompletionStage<Void> tagScopeEvent(String scopeId, IntegrationBookmark bookmark) {
+        Objects.requireNonNull(scopeId, "scopeId must not be null");
+        Objects.requireNonNull(bookmark, "bookmark must not be null");
+        scopeEventCalls.add(new RecordedScopeEvent(scopeId, bookmark));
+        return acceptForOpenScope(scopeId);
+    }
+
+    /**
+     * Records the call and completes immediately, on the same contract as {@link #tagScopeEvent}.
+     */
+    @Override
+    public CompletionStage<Void> recordScopeClip(String scopeId, ScopeClipRequest request) {
+        Objects.requireNonNull(scopeId, "scopeId must not be null");
+        Objects.requireNonNull(request, "request must not be null");
+        scopeClipCalls.add(new RecordedScopeClip(scopeId, request));
+        return acceptForOpenScope(scopeId);
+    }
+
+    private CompletionStage<Void> acceptForOpenScope(String scopeId) {
+        synchronized (this) {
+            if (!scopesById.containsKey(scopeId)) {
+                return failedStage(new NoSuchElementException("unknown scope: " + scopeId));
+            }
+            if (endOperationsByScopeId.containsKey(scopeId)) {
+                return failedStage(new IllegalStateException("scope already ended: " + scopeId));
+            }
+            return CompletableFuture.completedFuture(null);
         }
     }
 
@@ -294,6 +347,24 @@ public final class FakeReplayCoreMatchApi implements ReplayCoreMatchApi {
     }
 
     /**
+     * @return every {@link #tagScopeEvent} call received so far, in call order; never {@code null}. Each
+     *         entry keeps the scope id the call named, so a test covering concurrent matches can assert that
+     *         each marker was addressed to the right one.
+     */
+    public List<RecordedScopeEvent> tagScopeEventCalls() {
+        return Collections.unmodifiableList(new ArrayList<RecordedScopeEvent>(scopeEventCalls));
+    }
+
+    /**
+     * @return every {@link #recordScopeClip} call received so far, in call order; never {@code null}. Each
+     *         entry keeps the scope id the call named, for the same reason {@link #tagScopeEventCalls()}
+     *         does.
+     */
+    public List<RecordedScopeClip> recordScopeClipCalls() {
+        return Collections.unmodifiableList(new ArrayList<RecordedScopeClip>(scopeClipCalls));
+    }
+
+    /**
      * Looks up a previously opened scope by id.
      *
      * @param scopeId the scope id to look up; must not be {@code null}
@@ -374,6 +445,38 @@ public final class FakeReplayCoreMatchApi implements ReplayCoreMatchApi {
         public String scopeId() { return scopeId; }
         /** @return the request that was sent; never {@code null} */
         public EndScopeRequest request() { return request; }
+    }
+
+    /** One recorded {@link ReplayCoreMatchApi#tagScopeEvent} call. */
+    public static final class RecordedScopeEvent {
+        private final String scopeId;
+        private final IntegrationBookmark bookmark;
+
+        private RecordedScopeEvent(String scopeId, IntegrationBookmark bookmark) {
+            this.scopeId = scopeId;
+            this.bookmark = bookmark;
+        }
+
+        /** @return the scope id the call targeted; never {@code null} */
+        public String scopeId() { return scopeId; }
+        /** @return the marker that was sent; never {@code null} */
+        public IntegrationBookmark bookmark() { return bookmark; }
+    }
+
+    /** One recorded {@link ReplayCoreMatchApi#recordScopeClip} call. */
+    public static final class RecordedScopeClip {
+        private final String scopeId;
+        private final ScopeClipRequest request;
+
+        private RecordedScopeClip(String scopeId, ScopeClipRequest request) {
+            this.scopeId = scopeId;
+            this.request = request;
+        }
+
+        /** @return the scope id the call targeted; never {@code null} */
+        public String scopeId() { return scopeId; }
+        /** @return the request that was sent; never {@code null} */
+        public ScopeClipRequest request() { return request; }
     }
 
     /** Internal bookkeeping for a pending or completed {@link #endScope} call. */

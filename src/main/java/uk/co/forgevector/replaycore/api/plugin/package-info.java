@@ -27,7 +27,12 @@
  *       match scope over the server's one continuous recording, so a server that never restarts between
  *       games can still publish a separate replay per game. A scope is a tick-window, not a recording
  *       control: opening or ending one never starts, stops, rotates or cuts the physical recording, so
- *       several scopes can run at once. Present only when network-integration scopes are enabled.</li>
+ *       several scopes can run at once. On a recorder that reports
+ *       {@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreMatchApi#supportsScopeEvents()}, the same
+ *       surface also tags a marker onto one named scope and mints an event clip on it
+ *       ({@link uk.co.forgevector.replaycore.api.plugin.ScopeClipRequest}), which is how a marker or clip
+ *       is addressed to exactly one of several concurrent matches. Present only when network-integration
+ *       scopes are enabled.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.RecordingListener} and
  *       {@link uk.co.forgevector.replaycore.api.plugin.RecordingSession}: observe the session lifecycle
  *       (start, stop) on the server's main thread, and the eventual ready or failed outcome of a scope
@@ -40,8 +45,9 @@
  *
  * <p>The contract is read and annotate only: an addon may observe sessions, annotate the timeline, mark
  * logical match boundaries, and ask for a clip of a recording the host already chose to capture. It cannot
- * start, stop, download, delete, or read the bytes of a recording, and it cannot reach another account. Those operations stay with the
- * authenticated REST surface ({@link uk.co.forgevector.replaycore.api.client.ReplayCoreClient}) and the
- * server-side capture policy, which keeps the addon surface free of any privilege-escalation path.
+ * start, stop, download, delete, or read the bytes of a recording, and it cannot reach another account.
+ * Those operations stay with the authenticated REST surface
+ * ({@link uk.co.forgevector.replaycore.api.client.ReplayCoreClient}) and the server-side capture policy,
+ * which keeps the addon surface free of any privilege-escalation path.
  */
 package uk.co.forgevector.replaycore.api.plugin;

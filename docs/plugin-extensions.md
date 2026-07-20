@@ -16,7 +16,7 @@ running ReplayCore plugin supplies these classes:
 
 ```groovy
 dependencies {
-    compileOnly 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.2.0'
+    compileOnly 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.2.1'
 }
 ```
 
@@ -346,6 +346,62 @@ replayCore.registerListener(new RecordingListener() {
 Both callbacks are `default` no-ops, so an existing `RecordingListener` keeps
 compiling and linking unchanged.
 
+### Address a marker or clip to one match
+
+`tagTimelineEvent` writes onto the recording's own timeline, which carries one
+tick track for the whole server. While a single match is in progress that is
+unambiguous. With several open at once it is not: every match's markers land on
+the same track, and `arenaId` does not separate them, because the recorder keeps
+that field as descriptive metadata and never routes on it.
+
+`tagScopeEvent` routes instead. The marker is written against the collection the
+scope id names, and each match's timeline is read back by selecting on that
+collection, so a marker raised for one match is not selected by another match's
+query. `recordScopeClip` does the same for a playable clip of the moment, minting
+one asset that carries a killer, victim and participant row rather than one clip
+per viewer.
+
+Both are `default` methods that complete exceptionally on a recorder that
+predates them, so check once at startup rather than per event:
+
+```java
+import uk.co.forgevector.replaycore.api.plugin.EventKind;
+import uk.co.forgevector.replaycore.api.plugin.ScopeClipRequest;
+
+private boolean scopeEvents;
+
+// on enable
+replayCore.matches().ifPresent(matches -> scopeEvents = matches.supportsScopeEvents());
+
+// on a kill, with the scope id held on the match object it belongs to
+public void onKill(Game game, UUID killer, UUID victim) {
+    if (!scopeEvents) {
+        return;
+    }
+    String scopeId = scopeIdsByMatch.get(game.id());
+    if (scopeId == null) {
+        return;
+    }
+    replayCore.matches().ifPresent(matches -> matches.recordScopeClip(scopeId,
+            ScopeClipRequest.builder(EventKind.KILL)
+                    .preRollTicks(120L)   // 6s before the kill
+                    .postRollTicks(60L)   // 3s after it
+                    .killer(killer)
+                    .victim(victim)
+                    .build()));
+}
+```
+
+The window is given as tick offsets around the moment of the call, never as an
+absolute tick and never as a `Duration`: 20 ticks is one second on an unlagged
+server, and ticks pause when the server is empty, so no wall-clock quantity is a
+valid tick quantity. The recorder clamps toward less footage, never more, at the
+scope's start, at an archive rotation and at the scope's end.
+
+Routing is guaranteed; footage is not filtered. A clip is a tick window over the
+one shared recording, so it renders everything captured in those ticks, including
+an unrelated match running at the same time in the same world.
+
 ### Test without a server
 
 `FakeReplayCoreMatchApi` is an in-memory implementation shipped in the main
@@ -371,12 +427,22 @@ assertEquals(1, fake.beginScopeCalls().size());
 assertTrue(finalizing.toCompletableFuture().isDone());
 ```
 
+The fake reports `supportsScopeEvents()` as `true`, so an integration's capability
+branch takes the same path in tests as against a current recorder.
+`tagScopeEventCalls()` and `recordScopeClipCalls()` keep the scope id each call
+named, which is what lets a test with two matches open assert that a marker or
+clip was addressed to the right one.
+
 ## Compatibility
 
 - Check the major component of `apiVersion()` before using the contract.
 - Detect optional features with `clips()`, `killReplay()` and `matches()` on
   every enable. `matches()` is a `default` method returning an empty `Optional`,
   so an older recorder reports no match surface rather than failing to link.
+- Detect the scope-addressed event surface with `supportsScopeEvents()` once on
+  enable. `tagScopeEvent` and `recordScopeClip` are `default` methods, so a
+  recorder that predates them links fine and completes every such call
+  exceptionally; branch on the capability rather than on a returned stage.
 - `Bookmark`, `RecordingService`, and the related legacy accessors remain for
   source compatibility but are deprecated. New integrations should use
   `IntegrationBookmark`, `ReplayCoreTimelineApi`, and `RecordingControlApi`.
