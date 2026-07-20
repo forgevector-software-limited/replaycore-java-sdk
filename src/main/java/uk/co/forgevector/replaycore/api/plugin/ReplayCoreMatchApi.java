@@ -137,7 +137,7 @@ public interface ReplayCoreMatchApi {
     /**
      * Tags a timeline marker onto one named scope, at the moment of the call.
      *
-     * <h4>Why this exists alongside {@link ReplayCoreTimelineApi#tagTimelineEvent}</h4>
+     * <p><strong>Why this exists alongside {@link ReplayCoreTimelineApi#tagTimelineEvent}</strong>
      * <p>{@link ReplayCoreTimelineApi#tagTimelineEvent} writes into the recording's own archive byte stream,
      * which carries one tick timeline for the whole server and has no concept of a scope. That is
      * unambiguous only while a single match is in progress. With several open at once, a marker raised for
@@ -156,7 +156,7 @@ public interface ReplayCoreMatchApi {
      * applies the same availability rules as any other read of a match's contents, so a held match's markers
      * are not returned until it is released.
      *
-     * <h4>The routing guarantee, and its one limit</h4>
+     * <p><strong>The routing guarantee, and its one limit</strong>
      * <p>Given a {@code scopeId} returned by {@link #beginScope}, a marker passed here is written to the
      * collection that {@code scopeId} names, or to nothing at all. No input, timing or concurrency causes it
      * to be written to a different collection: the destination is resolved purely from the argument, never
@@ -168,7 +168,7 @@ public interface ReplayCoreMatchApi {
      * event routes the marker to the match named. Keep the scope id on the match object it belongs to, rather
      * than in a shared "current match" field.
      *
-     * <h4>What the returned stage means</h4>
+     * <p><strong>What the returned stage means</strong>
      * <p>It completes promptly, before or shortly after this method returns, and reports whether the marker
      * was accepted for delivery, not that it has reached the cloud. Delivery is batched and retried in the
      * background. A marker accepted here is lost only if the process is killed before the next flush; a
