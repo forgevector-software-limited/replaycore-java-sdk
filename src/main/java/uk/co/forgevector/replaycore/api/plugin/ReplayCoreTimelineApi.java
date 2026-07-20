@@ -33,21 +33,35 @@ package uk.co.forgevector.replaycore.api.plugin;
  * accepted; {@code false} means recording is inactive or the recorder is temporarily unable to accept
  * another bookmark. Fields are bounded and sanitised by {@link IntegrationBookmark}.
  *
- * <p>Note: a bookmark whose {@code type} is a recognised match boundary (for example {@code arena_start},
- * {@code arena_end}, {@code category_start} or {@code category_end}) also drives session rotation in match
- * mode, so a game-mode plugin can mark match boundaries that seal a per-match archive, the same hook the
- * bundled adapters use.
+ * <p>Note: a bookmark whose {@code type} is {@code arena_start}, {@code arena_end}, {@code duel_start} or
+ * {@code duel_end} also drives session rotation in match mode, the same hook the bundled adapters use, so a
+ * game-mode plugin can mark one of those four types to seal a per-match archive. {@code category_start} and
+ * {@code category_end} are recorded onto the timeline like any other bookmark, but they do not drive
+ * rotation through this method.
  *
+ * <p>Session rotation cuts the physical recording, so it cannot represent two matches running at the same
+ * time on one server. For that, open a logical match scope instead of relying on rotation: see
+ * {@link ReplayCoreMatchApi}, reached from the umbrella {@link ReplayCoreApi#matches()}, which is a
+ * tick-window over the one continuous recording, so beginning or ending a scope never starts, stops or cuts
+ * it.
  */
 public interface ReplayCoreTimelineApi {
 
     /**
      * Tags {@code bookmark} onto the live recording's timeline at the current tick.
      *
+     * <p><strong>This marker is not addressed to any match.</strong> It is written onto the one shared
+     * timeline of the recording itself, which is unambiguous while a single match is in progress and is not
+     * when several are. {@link IntegrationBookmark#arenaId()} does not disambiguate it: the recorder stores
+     * that field as descriptive metadata and never routes on it. If this server runs concurrent matches and
+     * a marker needs to belong to exactly one of them, use
+     * {@link ReplayCoreMatchApi#tagScopeEvent(String, IntegrationBookmark)} with the scope id
+     * {@link ReplayCoreMatchApi#beginScope} returned for that match, which is routed rather than shared.
+     *
      * @param bookmark the event to record; must not be {@code null} (its required {@code source} and
      *                 {@code type} are validated when the {@link IntegrationBookmark} is built)
      * @return {@code true} if the bookmark was accepted onto the recording; {@code false} if recording is
- *         currently inactive or the recorder is temporarily unable to accept it
+     *         currently inactive or the recorder is temporarily unable to accept it
      */
     boolean tagTimelineEvent(IntegrationBookmark bookmark);
 }

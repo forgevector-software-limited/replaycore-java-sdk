@@ -8,6 +8,7 @@ package uk.co.forgevector.replaycore.api.plugin;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -15,8 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
 import org.junit.jupiter.api.AfterEach;
@@ -160,6 +164,157 @@ class PluginContractTest {
         KillReplayApi api = playerId -> Optional.of(expected);
 
         assertEquals(expected, api.latestKillReplayWithWebUrl(UUID.randomUUID()).get());
+    }
+
+    @Test
+    void scopeEventsAreOptionalForImplementorsThatPredateThem() {
+        // ScopeEventFreeMatchApi implements only the three original abstract methods. That it compiles at
+        // all is the source-compatibility guarantee for a recorder built before scope events existed.
+        ReplayCoreMatchApi predating = new ScopeEventFreeMatchApi();
+        assertFalse(predating.supportsScopeEvents());
+
+        IntegrationBookmark marker = IntegrationBookmark.builder("MyGameMode", "kill").build();
+        CompletableFuture<Void> tagged = predating.tagScopeEvent("scope-1", marker).toCompletableFuture();
+        assertTrue(tagged.isCompletedExceptionally());
+        CompletionException taggedFailure = assertThrows(CompletionException.class, () -> tagged.join());
+        assertTrue(taggedFailure.getCause() instanceof UnsupportedOperationException);
+
+        CompletableFuture<Void> clipped = predating
+                .recordScopeClip("scope-1", ScopeClipRequest.builder(EventKind.KILL).build())
+                .toCompletableFuture();
+        assertTrue(clipped.isCompletedExceptionally());
+        CompletionException clipFailure = assertThrows(CompletionException.class, () -> clipped.join());
+        assertTrue(clipFailure.getCause() instanceof UnsupportedOperationException);
+    }
+
+    @Test
+    void defaultScopeEventStagesAreNotSharedBetweenCalls() {
+        // The defaults allocate per call so that one caller completing or cancelling the returned stage
+        // cannot corrupt the result every later caller sees.
+        ReplayCoreMatchApi predating = new ScopeEventFreeMatchApi();
+        IntegrationBookmark marker = IntegrationBookmark.builder("MyGameMode", "kill").build();
+        assertNotSame(predating.tagScopeEvent("scope-1", marker).toCompletableFuture(),
+                predating.tagScopeEvent("scope-1", marker).toCompletableFuture());
+    }
+
+    @Test
+    void fakeRoutesScopeEventsToTheScopeTheCallNamed() {
+        FakeReplayCoreMatchApi fake = new FakeReplayCoreMatchApi();
+        assertTrue(fake.supportsScopeEvents());
+
+        ReplayScope first = openScope(fake, "begin:m1", "m1");
+        ReplayScope second = openScope(fake, "begin:m2", "m2");
+
+        fake.tagScopeEvent(first.scopeId(), IntegrationBookmark.builder("Duels", "kill").build())
+                .toCompletableFuture().join();
+        fake.tagScopeEvent(second.scopeId(), IntegrationBookmark.builder("Duels", "kill").build())
+                .toCompletableFuture().join();
+        fake.recordScopeClip(second.scopeId(), ScopeClipRequest.builder(EventKind.KILL)
+                        .preRollTicks(120L)
+                        .postRollTicks(60L)
+                        .build())
+                .toCompletableFuture().join();
+
+        // Two concurrent matches: each marker is addressed to the match it was raised for, and no other.
+        assertEquals(2, fake.tagScopeEventCalls().size());
+        assertEquals(first.scopeId(), fake.tagScopeEventCalls().get(0).scopeId());
+        assertEquals(second.scopeId(), fake.tagScopeEventCalls().get(1).scopeId());
+        assertEquals(1, fake.recordScopeClipCalls().size());
+        assertEquals(second.scopeId(), fake.recordScopeClipCalls().get(0).scopeId());
+        assertEquals(EventKind.KILL, fake.recordScopeClipCalls().get(0).request().eventKind());
+    }
+
+    @Test
+    void fakeRejectsScopeEventsForUnknownAndEndedScopes() {
+        FakeReplayCoreMatchApi fake = new FakeReplayCoreMatchApi();
+        IntegrationBookmark marker = IntegrationBookmark.builder("Duels", "kill").build();
+
+        CompletableFuture<Void> unknown = fake.tagScopeEvent("no-such-scope", marker).toCompletableFuture();
+        assertTrue(unknown.isCompletedExceptionally());
+
+        ReplayScope scope = openScope(fake, "begin:m1", "m1");
+        fake.endScope(scope.scopeId(), EndScopeRequest.builder("end:m1").build());
+
+        CompletableFuture<Void> afterEnd = fake.tagScopeEvent(scope.scopeId(), marker).toCompletableFuture();
+        assertTrue(afterEnd.isCompletedExceptionally());
+    }
+
+    @Test
+    void scopeClipRequestClampsWindowAndRecordsRelationships() {
+        UUID killer = UUID.randomUUID();
+        UUID victim = UUID.randomUUID();
+        ScopeClipRequest request = ScopeClipRequest.builder(EventKind.KILL)
+                .preRollTicks(999_999L)
+                .postRollTicks(-5L)
+                .killer(killer)
+                .victim(victim)
+                .build();
+
+        // Over-long and negative windows are clamped rather than rejected.
+        assertEquals(ScopeClipRequest.MAX_PRE_ROLL_TICKS, request.preRollTicks());
+        assertEquals(0L, request.postRollTicks());
+        Map<UUID, AssetRelationship> relationships = request.relationships();
+        assertEquals(AssetRelationship.KILL, relationships.get(killer));
+        assertEquals(AssetRelationship.DEATH, relationships.get(victim));
+        assertNull(request.clientEventId());
+        assertThrows(UnsupportedOperationException.class,
+                () -> request.relationships().put(UUID.randomUUID(), AssetRelationship.PARTICIPANT));
+    }
+
+    @Test
+    void scopeClipRequestRejectsAnUnusableClientEventId() {
+        assertThrows(IllegalArgumentException.class,
+                () -> ScopeClipRequest.builder(EventKind.KILL).clientEventId("   ").build());
+        assertThrows(IllegalArgumentException.class,
+                () -> ScopeClipRequest.builder(EventKind.KILL).clientEventId("bad\tid").build());
+        assertThrows(IllegalArgumentException.class, () -> ScopeClipRequest.builder(EventKind.KILL)
+                .clientEventId(repeat('x', ScopeClipRequest.MAX_CLIENT_EVENT_ID_LENGTH + 1))
+                .build());
+        assertThrows(NullPointerException.class, () -> ScopeClipRequest.builder(null).build());
+    }
+
+    @Test
+    void scopeClipRequestGivesAPlayerOneMeaning() {
+        UUID player = UUID.randomUUID();
+        ScopeClipRequest request = ScopeClipRequest.builder(EventKind.ROUND_END)
+                .participant(player)
+                .killer(player)
+                .build();
+
+        assertEquals(1, request.relationships().size());
+        assertEquals(AssetRelationship.KILL, request.relationships().get(player));
+    }
+
+    private static ReplayScope openScope(FakeReplayCoreMatchApi fake, String key, String matchId) {
+        return fake.beginScope(BeginScopeRequest
+                        .builder(key, matchId, "duels", "ranked-1v1", "post-match").build())
+                .toCompletableFuture().join();
+    }
+
+    private static String repeat(char c, int times) {
+        StringBuilder builder = new StringBuilder(times);
+        for (int i = 0; i < times; i++) {
+            builder.append(c);
+        }
+        return builder.toString();
+    }
+
+    /** A match API implementing only the methods that existed before scope events, to pin source compatibility. */
+    private static final class ScopeEventFreeMatchApi implements ReplayCoreMatchApi {
+        @Override
+        public CompletionStage<ReplayScope> beginScope(BeginScopeRequest request) {
+            return new CompletableFuture<ReplayScope>();
+        }
+
+        @Override
+        public CompletionStage<Void> updateScope(String scopeId, ScopeUpdate update) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public CompletionStage<FinalizeResult> endScope(String scopeId, EndScopeRequest request) {
+            return new CompletableFuture<FinalizeResult>();
+        }
     }
 
     /** A trivial in-memory API used to exercise the provider and umbrella contract. */
