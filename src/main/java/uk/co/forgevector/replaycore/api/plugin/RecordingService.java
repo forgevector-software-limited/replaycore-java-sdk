@@ -8,11 +8,15 @@ package uk.co.forgevector.replaycore.api.plugin;
 import java.util.Optional;
 
 /**
- * The legacy recording-state surface for a plugin integration.
+ * The recorder's live capture surface, as projected to an addon.
+ *
+ * <p>This is the public face of the recorder's internal capture sink: it reports
+ * whether recording is currently active and at which tick, and exposes a handle to
+ * the active session.
  *
  * @deprecated Superseded by {@link RecordingControlApi}, obtained from
- *             {@link ReplayCoreApi#recordingControl()}, which carries the same read methods. To annotate
- *             the live recording, use
+ *             {@link ReplayCoreApi#recordingControl()}, which carries the same read methods (and the
+ *             roadmap control verbs). To annotate the live recording, use
  *             {@link ReplayCoreTimelineApi#tagTimelineEvent(IntegrationBookmark)} through
  *             {@link ReplayCoreApi#timeline()}. This type is retained only for source compatibility and
  *             will be removed in a future major version.
@@ -50,8 +54,12 @@ public interface RecordingService {
      * Asks the recorder to place a bookmark on the active recording at the current
      * tick.
      *
-     * <p>The return value reports whether the bookmark was accepted; ordinary
-     * refusals are returned as {@code false}.
+     * <p>This mirrors the REST timeline-event write, but from inside the tick loop
+     * and against whatever recording is live now. It is best-effort: the recorder
+     * may drop the bookmark if recording is not active, if the per-recording
+     * bookmark budget is exhausted, or if the capture policy disallows it. The
+     * return value reports whether the bookmark was accepted; it never throws for
+     * an ordinary rejection.
      *
      * @param bookmark the bookmark to add; must not be {@code null}
      * @return {@code true} if the recorder accepted the bookmark, {@code false}

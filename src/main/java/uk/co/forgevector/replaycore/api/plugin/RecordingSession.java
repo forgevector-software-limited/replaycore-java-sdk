@@ -13,16 +13,18 @@ import java.util.Optional;
  * has just finished capturing.
  *
  * <p>An addon receives these from {@link RecordingListener} callbacks and from
- * {@link RecordingControlApi#currentSession()}. A session is a snapshot of immutable
+ * {@link RecordingService#currentSession()}. A session is a snapshot of immutable
  * facts about the recording; it is not a control handle and exposes no way to
  * start, stop, download or delete a recording. Live, mutable state (such as the
- * current tick) is read through {@link RecordingControlApi}, not here.
+ * current tick) is read through {@link RecordingService}, not here.
+ *
+ * <p>Forward-looking contract: see the package documentation for status.
  */
 public interface RecordingSession {
 
     /**
      * Returns the stable session identifier for this recording, matching the
-     * {@code session_id} that segmented replays expose through the REST
+     * RFC-0006 {@code session_id} that segmented replays expose through the REST
      * API. For an addon, this is the join key between an in-process session and
      * the replay metadata it can later fetch with the REST client.
      *

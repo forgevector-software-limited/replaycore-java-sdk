@@ -5,7 +5,7 @@ REST endpoints it wraps. It reflects the endpoints ReplayCore exposes to API-key
 holders today; see [Endpoint coverage](#endpoint-coverage) for the current
 boundary.
 
-This page documents the `1.2.1` release. Documentation for earlier releases
+This page documents the `1.3.0` release. Documentation for earlier releases
 remains available from each release's Git tag.
 
 The generated Javadoc is the authoritative, method-level reference. Build it with

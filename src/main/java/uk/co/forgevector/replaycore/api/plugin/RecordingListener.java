@@ -10,23 +10,16 @@ package uk.co.forgevector.replaycore.api.plugin;
  *
  * <p>Register an implementation with
  * {@link ReplayCoreApi#registerListener(RecordingListener)} and remove it with
- * {@link ReplayCoreApi#unregisterListener(RecordingListener)}. Every callback
- * must return quickly and must not block; offload any heavy or network work (for
- * example a REST call) to another thread.
- *
- * <p>The four callbacks do not all run on the same thread.
- * {@link #onRecordingStarted} and {@link #onRecordingStopped} are invoked on the
- * server's main thread at the corresponding session boundary, so they may touch
- * the platform API directly. {@link #onAssetReady} and {@link #onAssetFailed} are
- * invoked on the scope finalisation worker instead, because that outcome only
- * becomes known once the cloud has confirmed it, long after the originating call
- * returned. An implementation that needs the platform API from those two must
- * schedule the work back onto the main thread itself.
+ * {@link ReplayCoreApi#unregisterListener(RecordingListener)}. The recorder
+ * invokes the callbacks on the server's main thread at the corresponding
+ * session boundary, so implementations must return quickly and must not block;
+ * offload any heavy or network work (for example a REST call) to another thread.
  *
  * <p>Callbacks are observational. They report what the recorder did; they cannot
  * veto or alter the recording. All methods are {@code default} no-ops so an addon
- * overrides only the boundaries it cares about. A callback that throws is
- * isolated and cannot break delivery for other listeners.
+ * overrides only the boundaries it cares about.
+ *
+ * <p>Forward-looking contract: see the package documentation for status.
  */
 public interface RecordingListener {
 
@@ -56,9 +49,6 @@ public interface RecordingListener {
      * that call returned may already have completed with an in-progress state (or the process that issued
      * it may have restarted) by the time the true outcome is known.
      *
-     * <p>Invoked on the scope finalisation worker, not the server's main thread. Schedule any work that
-     * touches the platform API back onto the main thread.
-     *
      * <p>Default no-op so an existing {@link RecordingListener} implementation remains source and binary
      * compatible without overriding it.
      *
@@ -71,9 +61,6 @@ public interface RecordingListener {
      * Invoked when a collection or asset opened through {@link ReplayCoreMatchApi} reaches
      * {@link ProcessingState#FAILED}. See {@link #onAssetReady} for why this in-process callback exists
      * alongside the {@link java.util.concurrent.CompletionStage} returned by the originating call.
-     *
-     * <p>Invoked on the scope finalisation worker, not the server's main thread; see
-     * {@link #onAssetReady} for what that means for an implementation.
      *
      * <p>Default no-op so an existing {@link RecordingListener} implementation remains source and binary
      * compatible without overriding it.

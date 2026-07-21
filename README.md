@@ -25,12 +25,12 @@ a Bukkit, Spigot, Paper or Folia plugin.
 Releases are distributed through [JitPack](https://jitpack.io). Add the JitPack
 repository, then the dependency.
 
-The latest tagged release is `v1.2.1`, which reports SDK version `1.2.1` and
+The latest tagged release is `v1.3.0`, which reports SDK version `1.3.0` and
 tracks the matching ReplayCore product release. Use a tagged release for
 production rather than a mutable branch build.
 
 Some earlier product documentation named a `v1.1.5` coordinate. That tag was
-never published, so a build depending on it cannot resolve. Move to `v1.2.1`.
+never published, so a build depending on it cannot resolve. Move to `v1.3.0`.
 
 **Gradle**
 
@@ -40,7 +40,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.2.1'
+    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.3.0'
 }
 ```
 
@@ -57,7 +57,7 @@ dependencies {
 <dependency>
     <groupId>com.github.forgevector-software-limited</groupId>
     <artifactId>replaycore-java-sdk</artifactId>
-    <version>v1.2.1</version>
+    <version>v1.3.0</version>
 </dependency>
 ```
 
@@ -192,7 +192,9 @@ control. See [`docs/security.md`](docs/security.md) for the operating guidance.
 Alongside the REST client, the SDK ships the supported in-process extension
 contract (package `uk.co.forgevector.replaycore.api.plugin`) for plugins running
 on the same server as ReplayCore. It covers recording state and lifecycle,
-timeline bookmarks, clips, recent kill-replay links, and match scopes. See
+timeline bookmarks, clips, recent kill-replay links, match scopes, reading a
+player's replay catalogue and minting watch links in process, and per-subject
+capture privacy for hidden or disguised players. See
 [`docs/plugin-extensions.md`](docs/plugin-extensions.md).
 
 ### Match scopes

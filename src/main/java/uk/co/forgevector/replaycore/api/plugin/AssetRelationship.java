@@ -14,6 +14,12 @@ package uk.co.forgevector.replaycore.api.plugin;
  * second copy. Creating one asset per viewer instead of one relationship row per viewer is forbidden: it
  * doubles storage, doubles processing, and makes retention and revocation inconsistent between two rows
  * that represent the same real event.
+ *
+ * <p><strong>Reachability.</strong> This type is an ordinary in-process argument. Declare a participant's
+ * part in a clip with {@link ScopeClipRequest.Builder#relationship(java.util.UUID, AssetRelationship)},
+ * and read the declared set back with {@link ScopeClipRequest#relationships()}. The same names are the
+ * values of the {@code relation} field on the REST network integration API's asset rows, so a clip
+ * recorded in process and one created over REST describe a participant identically.
  */
 public enum AssetRelationship {
     /** The player who caused the moment (for example the killer in a kill clip). */

@@ -12,6 +12,14 @@ package uk.co.forgevector.replaycore.api.plugin;
  * collection's segments at playback time. Two assets of different kinds (for example a
  * {@link #FULL_MATCH} and an {@link #EVENT_CLIP} covering the same moments) may overlap freely without any
  * bytes being copied.
+ *
+ * <p><strong>Reachability.</strong> No method on {@link ReplayCoreMatchApi}, or anywhere else in this
+ * package, currently accepts or returns this type, so a plugin using only the published in-process
+ * surface cannot construct or observe one. It is here as the shared vocabulary of the REST network
+ * integration API. Read it as reference values for the {@code kind} field of that API's asset-creation
+ * endpoint, and do not write an in-process code path that expects to be handed one. Note that
+ * {@link #FULL_MATCH} is produced only by finalising a collection and is rejected if sent to the
+ * asset-creation endpoint.
  */
 public enum AssetKind {
     /** The whole collection, start to end, across every contributing segment. */

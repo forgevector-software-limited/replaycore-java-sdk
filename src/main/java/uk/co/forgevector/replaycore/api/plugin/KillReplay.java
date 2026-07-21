@@ -13,10 +13,12 @@ import java.util.UUID;
  * their own plugin so a victim (or a watching admin) can jump straight to the replay of that specific
  * death.
  *
- * <p>{@link #command()} is the ready-to-run watch command when an in-game relay is available.
- * {@link #webUrl()} is the browser link when one is available. Values returned by
- * {@link KillReplayApi#latestKillReplay(UUID)} always have a non-blank command, while
- * {@link KillReplayApi#latestKillReplayWithWebUrl(UUID)} may return a web-only value.
+ * <p>{@link #command()} is the ready-to-run watch command when an in-game relay is available, and is
+ * never {@code null}. {@link #webUrl()} is the browser death-watch link when one is available. A value
+ * returned by {@link KillReplayApi#latestKillReplay(UUID)} always has a non-blank command. The additive
+ * {@link KillReplayApi#latestKillReplayWithWebUrl(UUID)} lookup can return a web-link-only value, whose
+ * command is the empty string. {@link #expiresAtMillis()} is the epoch-millis after which the session
+ * token is no longer valid.
  */
 public final class KillReplay {
 
@@ -37,12 +39,12 @@ public final class KillReplay {
     }
 
     /**
-     * Creates a kill-replay value with an in-game command, a browser link, or both.
+     * Creates a kill-replay value with an in-game relay command, a browser link, or both.
      *
      * @param replayId        the replay id; must not be {@code null}
      * @param command         the ready-to-run watch command, or blank when {@code webUrl} is present
      * @param expiresAtMillis the epoch-millis after which the session token expires
-     * @param webUrl          the browser replay link, or blank when {@code command} is present
+     * @param webUrl          the browser death-watch link, or blank when {@code command} is present
      */
     public KillReplay(UUID replayId, String command, long expiresAtMillis, String webUrl) {
         this.replayId = Objects.requireNonNull(replayId, "replayId");
@@ -62,13 +64,14 @@ public final class KillReplay {
     }
 
     /**
-     * @return the ready-to-run watch command; never {@code null}, but empty for a web-only value
+     * @return the ready-to-run watch command, never {@code null}; empty only for a web-link-only value
+     *         obtained through {@link KillReplayApi#latestKillReplayWithWebUrl(UUID)}
      */
     public String command() {
         return command;
     }
 
-    /** @return the browser replay link, or {@code null} when only a command is available */
+    /** @return the browser death-watch link, or {@code null} when only the relay command is available */
     public String webUrl() {
         return webUrl;
     }

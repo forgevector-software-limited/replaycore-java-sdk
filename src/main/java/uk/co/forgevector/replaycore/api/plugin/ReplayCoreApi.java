@@ -42,12 +42,13 @@ import java.util.Optional;
  * <p>The API version string ({@link #apiVersion()}) lets an addon assert it is talking to a compatible
  * recorder before using newer capabilities.
  *
+ * <p>Forward-looking contract: see the package documentation for status.
  */
 public interface ReplayCoreApi {
 
     /**
      * Returns the version of this in-process contract the running recorder implements, as a
-     * {@code major.minor} string (for example {@code "1.1"}). The major component changes only on an
+     * {@code major.minor} string (for example {@code "1.0"}). The major component changes only on an
      * incompatible change, and it tracks the contract, not the product release train.
      *
      * @return the API version; never {@code null}
