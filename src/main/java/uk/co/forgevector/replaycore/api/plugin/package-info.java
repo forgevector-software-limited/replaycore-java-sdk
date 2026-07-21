@@ -37,8 +37,11 @@
  *       routes. The call itself goes out over the recorder's own HMAC-signed recording-key credential
  *       against {@code /v1/recorder/players/{uuid}/replays} and
  *       {@code /v1/recorder/replay-assets/{id}/watch-ticket}, never the Bearer {@code rc_live_} lane, so an
- *       addon calling this interface never needs a separate developer key on the server. Present under the
- *       same condition as {@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreMatchApi}.</li>
+ *       addon calling this interface never needs a separate developer key on the server. Registered under
+ *       the same condition as {@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreMatchApi}, but unlike
+ *       the surfaces above it is obtained from the platform's {@code ServicesManager} with
+ *       {@code getRegistration(ReplayCatalogApi.class)}, not from the umbrella
+ *       {@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreApi}, which has no catalogue accessor.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.RecordingListener} and
  *       {@link uk.co.forgevector.replaycore.api.plugin.RecordingSession}: observe the lifecycle. Four
  *       callbacks fire. {@code onRecordingStarted} and {@code onRecordingStopped} run on the server's main

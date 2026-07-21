@@ -23,7 +23,7 @@ package uk.co.forgevector.replaycore.api.plugin;
  *     rsp.getProvider().tagTimelineEvent(IntegrationBookmark.builder("MyGameMode", "objective")
  *         .severity(IntegrationBookmark.Severity.WARNING)
  *         .player(capturerUuid, capturerName)
- *         .arenaId(arenaId)
+ *         .arena(arenaId)
  *         .message("Captured the flag")
  *         .build());
  * }
