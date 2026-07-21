@@ -359,9 +359,8 @@ public final class BeginScopeRequest {
         }
 
         /**
-         * Sets the competition-hierarchy fields identifying the competition, series, round, bracket match
-         * and party/event a scope belongs to. ReplayCore stores and filters on these; it derives no
-         * standings from them.
+         * Sets the competition-hierarchy fields (RFC-0009 section 2.5). ReplayCore stores and filters on
+         * these; it derives no standings from them.
          *
          * @param competitionId  the competition id, or {@code null}
          * @param seriesId       the series id, or {@code null}

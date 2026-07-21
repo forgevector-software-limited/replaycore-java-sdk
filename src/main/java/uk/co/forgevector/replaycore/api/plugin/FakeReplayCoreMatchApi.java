@@ -20,8 +20,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * An in-memory {@link ReplayCoreMatchApi} an integration compiles and runs its own tests against, without a
- * live recorder or cloud backend. This type ships in the SDK's main source tree, not only in its tests, so a
- * consuming project can depend on it directly.
+ * live recorder or cloud backend. This type ships in the SDK's main source tree (RFC-0009 section 15), not
+ * only in its tests, so a consuming project can depend on it directly.
  *
  * <p>{@link #beginScope} and {@link #updateScope} complete their returned stage immediately, matching the
  * real recorder's fail-open, non-blocking contract. {@link #endScope}, by contrast, returns a stage that

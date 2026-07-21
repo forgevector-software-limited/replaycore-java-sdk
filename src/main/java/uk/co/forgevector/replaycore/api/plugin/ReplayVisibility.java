@@ -23,6 +23,6 @@ public enum ReplayVisibility {
     PARTICIPANTS,
     /** Reachable only by a caller with a verified staff authorisation scope. */
     STAFF_ONLY,
-    /** Reachable only by the owning account's own authenticated callers. */
+    /** Reachable only by the owning tenant's own authenticated callers. */
     PRIVATE
 }

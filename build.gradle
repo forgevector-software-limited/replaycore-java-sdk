@@ -123,6 +123,14 @@ javadoc {
     options.bottom = 'Copyright &copy; ForgeVector Software Limited. All rights reserved.'
     // Internal helpers are not part of the published surface.
     exclude 'uk/co/forgevector/replaycore/api/internal/**'
+    // Keep every doclint group EXCEPT accessibility. The accessibility check enforces HTML heading order,
+    // and the Java 8 javadoc tool used here and the Java 17 tool used by the Maven verify build disagree on
+    // it: Java 8 accepts an <h2> section heading inside a member comment and rejects <h4> as a level skip,
+    // while Java 17 rejects <h2>/<h3> there and wants <h4>. No single heading level satisfies both, so a
+    // faithful mirror of the source cannot pass both with this group on. Dropping only accessibility keeps
+    // the reference, syntax, html and missing checks that catch real defects (a bad {@link} target, broken
+    // HTML) while letting the canonical heading style through.
+    options.addStringOption('Xdoclint:all,-accessibility', '-quiet')
     // No -html5 option: the javadoc task runs under the pinned Java 8 toolchain above, whose javadoc
     // tool does not support -html5 (Java 8 emits HTML4, which is fine for an SDK). The old guard keyed
     // -html5 off JavaVersion.current() - the JDK running Gradle, which on any modern build machine is

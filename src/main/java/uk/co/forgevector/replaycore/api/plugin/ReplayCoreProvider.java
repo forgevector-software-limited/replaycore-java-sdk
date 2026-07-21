@@ -29,7 +29,8 @@ import java.util.Optional;
  * the recorder being absent. {@link #get()} returns an empty optional whenever the
  * recorder has not registered, so an addon can guard its features cleanly.
  *
- * <p>The {@link #set(ReplayCoreApi)} and {@link #clear()} methods are the recorder's
+ * <p>Forward-looking contract: see the package documentation for status. The
+ * {@link #set(ReplayCoreApi)} and {@link #clear()} methods are the recorder's
  * registration hooks, not for addon use.
  */
 public final class ReplayCoreProvider {

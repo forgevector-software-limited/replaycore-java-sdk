@@ -20,13 +20,14 @@ import java.util.UUID;
  *     getServer().getServicesManager().getRegistration(KillReplayApi.class);
  * if (rsp != null) {
  *     rsp.getProvider().latestKillReplayWithWebUrl(playerId)
- *        .ifPresent(replay -> player.sendMessage(
- *            replay.webUrl() != null ? replay.webUrl() : replay.command()));
+ *        .ifPresent(replay -> player.sendMessage(replay.webUrl() != null ? replay.webUrl() : replay.command()));
  * }
  * }</pre>
  *
- * <p>The lookup is non-blocking and safe from the server thread.
+ * <p>The API never blocks and never touches the main-thread hot path: it reads an in-memory registry
+ * populated by the death-cam flow.
  *
+ * <p>Forward-looking contract: see the package documentation for status.
  */
 public interface KillReplayApi {
 
@@ -36,21 +37,20 @@ public interface KillReplayApi {
      * token has not yet expired.
      *
      * @param playerId the player whose latest death replay is requested; must not be {@code null}
-     * @return the latest valid replay, or an empty optional
+     * @return the latest valid replay with a ready-to-run, non-blank command, or an empty optional
      */
     Optional<KillReplay> latestKillReplay(UUID playerId);
 
     /**
-     * Returns the most recent still-valid kill or death replay, including a
-     * web-only value. Unlike {@link #latestKillReplay(UUID)}, a returned value
-     * may have an empty {@link KillReplay#command() command}; use
-     * {@link KillReplay#webUrl()} for its browser link.
+     * Returns the most recent still-valid kill or death replay for the player, including web-link-only
+     * records. Unlike {@link #latestKillReplay(UUID)}, a returned record may have an empty
+     * {@link KillReplay#command() command}; use {@link KillReplay#webUrl()} for its browser watch link.
      *
-     * <p>The default preserves compatibility with providers that only support
-     * in-game commands.
+     * <p>This additive method has a default implementation so existing providers remain source and binary
+     * compatible. Providers that support web-link-only death-cam sessions override it.
      *
      * @param playerId the player whose latest death replay is requested; must not be {@code null}
-     * @return the latest valid replay, or an empty optional
+     * @return the latest valid replay, including a web-link-only replay, or an empty optional
      */
     default Optional<KillReplay> latestKillReplayWithWebUrl(UUID playerId) {
         return latestKillReplay(playerId);

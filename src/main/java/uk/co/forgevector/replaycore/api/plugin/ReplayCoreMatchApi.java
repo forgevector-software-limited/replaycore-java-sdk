@@ -9,7 +9,10 @@ import java.util.concurrent.CompletionStage;
 
 /**
  * Programmatic surface for a network integration to open, update and end a logical match scope over the
- * server's one continuous recording, the in-process twin of the network-integration REST surface.
+ * server's one continuous recording, the in-process twin of the network-integration REST surface (RFC-0009).
+ * A call through this interface reaches the cloud over the recorder's own HMAC-signed recording-key
+ * credential (the {@code /v1/recorder/...} lane), never the Bearer {@code rc_live_} developer API, so no
+ * separate developer key is needed on the server.
  * A scope is a tick-window over the recording, independent of any other scope open at the same time:
  * beginning or ending a scope never starts, stops, rotates or cuts the physical recording, which is the
  * decisive difference from the existing arena/duel rotation behaviour and is what lets dozens of scopes run
@@ -56,8 +59,9 @@ import java.util.concurrent.CompletionStage;
  *
  * <h2>Reliability contract</h2>
  * <p>Every method here is safe to call from the server's main thread: it never blocks on cloud I/O, never
- * throws for an ordinary operational condition, and fails open, so ReplayCore being unavailable can never
- * cancel a match, delay a death event or leave a player stuck loading. A {@code null} argument is the one exception a call may throw synchronously for, since that is a
+ * throws for an ordinary operational condition, and fails open, exactly as RFC-0009 section 13 requires, so
+ * ReplayCore being unavailable can never cancel a match, delay a death event or leave a player stuck
+ * loading. A {@code null} argument is the one exception a call may throw synchronously for, since that is a
  * programmer error rather than a runtime condition; every other outcome, including cloud unavailability, an
  * unknown {@code scopeId}, or an update to an already-ended scope, is delivered through the returned
  * {@link CompletionStage} instead of thrown. The returned stage itself always completes promptly with an
@@ -86,7 +90,7 @@ public interface ReplayCoreMatchApi {
      *         original) {@link ReplayScope}; never blocks. Completes exceptionally, never throws
      *         synchronously, for an ordinary operational condition such as this backend being at its bounded
      *         limit of concurrently open scopes or no archive currently being recorded to attach the scope
-     *         to; in both cases no scope is opened.
+     *         to — in both cases no scope is opened.
      */
     CompletionStage<ReplayScope> beginScope(BeginScopeRequest request);
 
@@ -123,7 +127,7 @@ public interface ReplayCoreMatchApi {
      * Whether this backend implements the scope-addressed event surface below ({@link #tagScopeEvent} and
      * {@link #recordScopeClip}).
      *
-     * <p>Check this once at startup and branch on the result, rather than inspecting a returned stage per
+     * <p>Check this ONCE at startup and branch on the result, rather than inspecting a returned stage per
      * event: on a recorder that predates these methods both of them complete exceptionally on every call,
      * and a kill handler should not be discovering that thousands of times a match.
      *
@@ -135,42 +139,44 @@ public interface ReplayCoreMatchApi {
     }
 
     /**
-     * Tags a timeline marker onto one named scope, at the moment of the call.
+     * Tags a timeline marker onto ONE named scope, at the moment of the call.
      *
-     * <p><strong>Why this exists alongside {@link ReplayCoreTimelineApi#tagTimelineEvent}</strong>
+     * <h2>Why this exists alongside {@link ReplayCoreTimelineApi#tagTimelineEvent}</h2>
      * <p>{@link ReplayCoreTimelineApi#tagTimelineEvent} writes into the recording's own archive byte stream,
-     * which carries one tick timeline for the whole server and has no concept of a scope. That is
-     * unambiguous only while a single match is in progress. With several open at once, a marker raised for
+     * which carries one tick timeline for the whole server and has no concept of a scope. On a backend with
+     * several matches open at once that is unambiguous only if there IS only one match: a marker raised for
      * one duel lands on the same shared timeline as every other duel's, and
-     * {@link IntegrationBookmark#arenaId()} does not change that: the recorder stores that field as
-     * descriptive metadata and never reads it as a routing key.
+     * {@link IntegrationBookmark#arenaId()} does not change that - it is descriptive metadata the recorder
+     * stores, never a routing key it reads.
      *
-     * <p>This method routes instead. The marker is written against the collection the {@code scopeId} names,
-     * and each match's timeline is read back by selecting on that collection, so a marker tagged for one
-     * match is not selected by another match's query.
+     * <p>This method routes instead. The marker is written against the collection {@code scopeId} names, and
+     * is read back per match through {@code GET /v1/recorder/replay-collections/{id}/timeline-events} (the
+     * recorder-lane mirror of the Bearer catalogue route of the same name), which selects on that collection
+     * id. A marker tagged for one match is therefore not merely unlikely to appear on another's timeline - it
+     * is not selected by the other's query.
      *
-     * <p>Two consequences are worth stating, because they are easy to assume the other way round. A marker
-     * written here does not appear on the shared per-archive timeline that the replay-addressed API reads,
-     * because that read selects on the archive rather than on the match; putting every concurrent match's
-     * markers on one archive timeline is the problem this method exists to solve. And the per-match read
-     * applies the same availability rules as any other read of a match's contents, so a held match's markers
-     * are not returned until it is released.
+     * <p>Two consequences worth stating plainly, because they are easy to assume the other way round. A
+     * marker written here does NOT appear on the shared per-archive timeline the older replay-addressed API
+     * reads, since that read selects on the archive rather than the match - which is the point, as putting
+     * every concurrent match's markers on one archive timeline is the problem this method exists to solve.
+     * And the per-match read applies the same availability rules as every other read of a match's contents,
+     * so a held match's markers are not returned until it is released.
      *
-     * <p><strong>The routing guarantee, and its one limit</strong>
+     * <h2>The routing guarantee, and its one limit</h2>
      * <p>Given a {@code scopeId} returned by {@link #beginScope}, a marker passed here is written to the
-     * collection that {@code scopeId} names, or to nothing at all. No input, timing or concurrency causes it
-     * to be written to a different collection: the destination is resolved purely from the argument, never
-     * inferred from an arena id, a tick, a player, or the most recently opened scope, and the routing address
-     * is captured before the call returns, so a recording that rotates onto a new archive mid-call cannot
-     * re-attribute it.
+     * collection that {@code scopeId} names, or to nothing at all. There is no input, no timing and no
+     * concurrency under which it is written to a different collection: the destination is resolved purely
+     * from the argument, never inferred from an arena id, a tick, a player, or "the most recently opened
+     * scope", and the routing address is captured before the call returns so a recording rotating onto a new
+     * archive mid-call cannot re-attribute it.
      *
-     * <p>The limit is the argument itself. Passing one match's {@code scopeId} while handling another match's
-     * event routes the marker to the match named. Keep the scope id on the match object it belongs to, rather
-     * than in a shared "current match" field.
+     * <p>The limit is the argument itself. Passing one match's {@code scopeId} while handling another
+     * match's event routes the marker to the match named, which is the only thing this method can honestly
+     * do. Keep the scope id on the match object it belongs to, never in a shared "current match" field.
      *
-     * <p><strong>What the returned stage means</strong>
+     * <h2>What the returned stage means</h2>
      * <p>It completes promptly, before or shortly after this method returns, and reports whether the marker
-     * was accepted for delivery, not that it has reached the cloud. Delivery is batched and retried in the
+     * was ACCEPTED for delivery - not that it has reached the cloud. Delivery is batched and retried in the
      * background. A marker accepted here is lost only if the process is killed before the next flush; a
      * permanent delivery failure is reported through {@link RecordingListener#onAssetFailed}. Safe to call
      * from the main thread at gameplay frequency: the call performs no file or network IO.
@@ -196,22 +202,22 @@ public interface ReplayCoreMatchApi {
     }
 
     /**
-     * Mints one playable event clip on one named scope, around the moment of the call, with per-player
-     * killer/victim/participant relationships: the building block for a kills-and-deaths catalog.
+     * Mints one playable event clip on ONE named scope, around the moment of the call, with per-player
+     * killer/victim/participant relationships - the building block for a kills-and-deaths catalog.
      *
-     * <p>One moment produces exactly one asset carrying one relationship row per player, reachable from the
-     * killer's kill feed, the victim's death feed and the match timeline. Minting a separate clip per viewer
-     * is never correct: it doubles storage and processing, and it makes retention and revocation inconsistent
-     * between rows representing the same real event.
+     * <p>One moment produces exactly ONE asset carrying one relationship row per player (RFC-0009 section
+     * 2.4), reachable from the killer's kill feed, the victim's death feed and the match timeline. Minting a
+     * separate clip per viewer is never correct: it doubles storage and processing and makes retention and
+     * revocation inconsistent between rows representing the same real event.
      *
-     * <p>The window is described relatively. See {@link ScopeClipRequest} for why no absolute tick is
+     * <p>The window is described relatively - see {@link ScopeClipRequest} for why no absolute tick is
      * accepted, and for exactly how the recorder clamps the window at a scope start, an archive rotation and
-     * a scope end. The routing guarantee and the single limit stated on {@link #tagScopeEvent} apply here
-     * unchanged, as does the meaning of the returned stage.
+     * a scope end. The same routing guarantee and the same single limit stated on {@link #tagScopeEvent}
+     * apply here unchanged, as does the meaning of the returned stage.
      *
-     * <p><strong>Routing is guaranteed; footage is not filtered.</strong> This clip is a tick window over the
-     * one shared recording, so it renders everything captured in those ticks, including an unrelated match
-     * running simultaneously in the same world. See {@link ScopeClipRequest}'s own doc comment.
+     * <p><strong>Routing is guaranteed; footage is not filtered.</strong> This clip is a tick window over
+     * the one shared recording, so it renders everything captured in those ticks, including an unrelated
+     * match running simultaneously in the same world. See {@link ScopeClipRequest}'s own doc comment.
      *
      * @param scopeId the scope to mint the clip on, from {@link ReplayScope#scopeId()}; must not be
      *                {@code null}

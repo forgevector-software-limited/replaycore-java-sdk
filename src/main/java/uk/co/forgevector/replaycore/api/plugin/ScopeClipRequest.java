@@ -16,8 +16,8 @@ import java.util.UUID;
  * A request to mint one playable event clip on ONE named scope, handed to
  * {@link ReplayCoreMatchApi#recordScopeClip}. It describes a moment - a kill, a round ending - as a window
  * AROUND NOW plus the players it concerns, and the recorder turns that into exactly one asset with one
- * relationship row per player, reachable from a killer's kill feed, a victim's death feed and the match
- * timeline without ever storing a second copy.
+ * relationship row per player (RFC-0009 section 2.4), reachable from a killer's kill feed, a victim's death
+ * feed and the match timeline without ever storing a second copy.
  *
  * <h2>No absolute ticks, deliberately</h2>
  * <p>This request carries NO tick coordinate, only two RELATIVE offsets: how far before the moment the clip
@@ -90,8 +90,8 @@ public final class ScopeClipRequest {
     private ScopeClipRequest(Builder b) {
         this.eventKind = Objects.requireNonNull(b.eventKind, "eventKind must not be null");
         // Clamped rather than rejected: an over-long pre-roll is a caller asking for more context than the
-        // recorder will give, which is an ordinary operational condition rather than a programmer error,
-        // and this surface does not throw out of a gameplay path for those.
+        // recorder will give, not a programmer error, and RFC-0009 section 13 forbids throwing out of a
+        // Minecraft-facing path for an ordinary operational condition.
         this.preRollTicks = clamp(b.preRollTicks, MAX_PRE_ROLL_TICKS);
         this.postRollTicks = clamp(b.postRollTicks, MAX_POST_ROLL_TICKS);
         this.relationships = boundedRelationships(b.relationships);

@@ -16,7 +16,7 @@ running ReplayCore plugin supplies these classes:
 
 ```groovy
 dependencies {
-    compileOnly 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.2.1'
+    compileOnly 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.3.0'
 }
 ```
 
@@ -433,6 +433,88 @@ branch takes the same path in tests as against a current recorder.
 named, which is what lets a test with two matches open assert that a marker or
 clip was addressed to the right one.
 
+## Read a player's replays and mint a watch link
+
+`ReplayCatalogApi` reads the replay catalogue for one player and mints a
+short-lived watch link, so a network can build its own browser and its own watch
+button without a separate developer key on the server. The call is carried to the
+cloud over the recorder's own recording key, so the addon never handles a bearer
+key itself.
+
+The catalogue is a registered service. Look it up on enable and keep it when it is
+present.
+
+```java
+import uk.co.forgevector.replaycore.api.plugin.ReplayCatalogApi;
+import uk.co.forgevector.replaycore.api.plugin.ReplayCatalogEntry;
+import uk.co.forgevector.replaycore.api.plugin.ReplayCatalogQuery;
+import uk.co.forgevector.replaycore.api.plugin.WatchTicketRequest;
+import org.bukkit.plugin.RegisteredServiceProvider;
+
+RegisteredServiceProvider<ReplayCatalogApi> registration =
+        getServer().getServicesManager().getRegistration(ReplayCatalogApi.class);
+if (registration == null) {
+    return; // this recorder build or server config does not offer the catalogue
+}
+ReplayCatalogApi catalog = registration.getProvider();
+```
+
+`listForPlayer` returns that player's replays, newest first and already embargo
+gated, one page at a time. Read a page, then follow `nextCursor()` until it is
+absent. Pass a `ReplayCatalogQuery` with no facets set for an unfiltered first
+page, or set filters on the builder to narrow by game type, clip type, match or
+processing state.
+
+```java
+catalog.listForPlayer(playerUuid, ReplayCatalogQuery.builder().build())
+        .thenAccept(page -> {
+            for (ReplayCatalogEntry entry : page.entries()) {
+                getLogger().info(entry.assetId() + " " + entry.kind());
+            }
+        });
+```
+
+`createWatchTicket` mints a single-use, short-lived ticket for one asset and one
+viewer. Redeeming that ticket into playable bytes is a viewer-side REST call and
+is not part of this interface, so this method only ever performs the mint.
+
+```java
+catalog.createWatchTicket(WatchTicketRequest.builder(assetId).build())
+        .thenAccept(result -> {
+            if (result.ready()) {
+                // hand result.ticket() to your website's player
+            }
+        });
+```
+
+Both methods return a `CompletionStage` and never block the calling thread. A call
+that is refused or fails completes the stage exceptionally rather than throwing
+inline, so branch on the stage's outcome.
+
+## Redact a hidden or disguised player
+
+`RecordingControlApi.updateSubject` sets a per-subject capture-visibility override
+live, for a privacy reason the recorder cannot detect on its own such as a
+disguise, a moderation shadow, or a vanish provider outside the recorder's own
+convention. Pass `CaptureVisibility.HIDDEN` or `CaptureVisibility.REDACTED` to
+gate what is captured for that player, and `CaptureVisibility.VISIBLE` to clear
+the override. The player's real id is always kept, so an erasure request still
+resolves.
+
+```java
+import uk.co.forgevector.replaycore.api.plugin.CaptureVisibility;
+import java.util.Collections;
+
+replayCore.recordingControl().updateSubject(
+        playerUuid, realName, disguiseName, CaptureVisibility.REDACTED,
+        Collections.emptyMap());
+```
+
+`updateSubject` is a `default` method, so a recorder that predates it links fine
+and reports the override as not applied. It changes capture only for the UUID it
+names and cannot reach another player or another tenant. It works on the 1.8
+legacy lane, the modern lane, and Folia.
+
 ## Compatibility
 
 - Check the major component of `apiVersion()` before using the contract.
@@ -443,6 +525,10 @@ clip was addressed to the right one.
   enable. `tagScopeEvent` and `recordScopeClip` are `default` methods, so a
   recorder that predates them links fine and completes every such call
   exceptionally; branch on the capability rather than on a returned stage.
+- Detect the replay catalogue with
+  `getServicesManager().getRegistration(ReplayCatalogApi.class)` on enable. A
+  recorder build or server config that does not offer it returns no registration
+  rather than failing to link, so guard on a null registration.
 - `Bookmark`, `RecordingService`, and the related legacy accessors remain for
   source compatibility but are deprecated. New integrations should use
   `IntegrationBookmark`, `ReplayCoreTimelineApi`, and `RecordingControlApi`.
