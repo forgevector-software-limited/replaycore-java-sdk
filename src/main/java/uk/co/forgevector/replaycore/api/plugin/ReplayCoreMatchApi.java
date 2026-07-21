@@ -141,7 +141,7 @@ public interface ReplayCoreMatchApi {
     /**
      * Tags a timeline marker onto ONE named scope, at the moment of the call.
      *
-     * <h4>Why this exists alongside {@link ReplayCoreTimelineApi#tagTimelineEvent}</h4>
+     * <h3>Why this exists alongside {@link ReplayCoreTimelineApi#tagTimelineEvent}</h3>
      * <p>{@link ReplayCoreTimelineApi#tagTimelineEvent} writes into the recording's own archive byte stream,
      * which carries one tick timeline for the whole server and has no concept of a scope. On a backend with
      * several matches open at once that is unambiguous only if there IS only one match: a marker raised for
@@ -162,7 +162,7 @@ public interface ReplayCoreMatchApi {
      * And the per-match read applies the same availability rules as every other read of a match's contents,
      * so a held match's markers are not returned until it is released.
      *
-     * <h4>The routing guarantee, and its one limit</h4>
+     * <h3>The routing guarantee, and its one limit</h3>
      * <p>Given a {@code scopeId} returned by {@link #beginScope}, a marker passed here is written to the
      * collection that {@code scopeId} names, or to nothing at all. There is no input, no timing and no
      * concurrency under which it is written to a different collection: the destination is resolved purely
@@ -174,7 +174,7 @@ public interface ReplayCoreMatchApi {
      * match's event routes the marker to the match named, which is the only thing this method can honestly
      * do. Keep the scope id on the match object it belongs to, never in a shared "current match" field.
      *
-     * <h4>What the returned stage means</h4>
+     * <h3>What the returned stage means</h3>
      * <p>It completes promptly, before or shortly after this method returns, and reports whether the marker
      * was ACCEPTED for delivery - not that it has reached the cloud. Delivery is batched and retried in the
      * background. A marker accepted here is lost only if the process is killed before the next flush; a
