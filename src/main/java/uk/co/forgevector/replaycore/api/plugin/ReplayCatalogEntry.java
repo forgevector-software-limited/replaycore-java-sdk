@@ -29,8 +29,8 @@ import java.util.Optional;
  * a longer positional constructor error-prone, matching {@link ReplayOperationResult}'s own precedent for
  * this field count. {@link #processingState()}, {@link #releaseState()}, {@link #visibility()},
  * {@link #createdAt()} and {@link #updatedAt()} are always present on the wire and therefore required at
- * {@link #build()}, even though they are supplied through the builder rather than the required constructor
- * arguments.
+ * {@link Builder#build()}, even though they are supplied through the builder rather than the required
+ * constructor arguments.
  *
  * <p>Immutable and thread-safe once built.
  */
