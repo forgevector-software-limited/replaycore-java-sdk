@@ -6,6 +6,9 @@
 package uk.co.forgevector.replaycore.api.plugin;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -51,6 +54,7 @@ public final class ReplayCatalogEntry {
     private final boolean playbackEligible;
     private final boolean expired;
     private final String watchUrl;
+    private final List<AssetParticipant> participants;
 
     private ReplayCatalogEntry(Builder b) {
         this.assetId = requiredIdentifier(b.assetId, "assetId");
@@ -68,6 +72,7 @@ public final class ReplayCatalogEntry {
         this.playbackEligible = b.playbackEligible;
         this.expired = b.expired;
         this.watchUrl = optionalUrl(b.watchUrl, "watchUrl");
+        this.participants = unmodifiableParticipants(b.participants);
     }
 
     /**
@@ -117,6 +122,11 @@ public final class ReplayCatalogEntry {
      *          released and public/unlisted (the cloud never emits one for a held, private or revoked
      *          asset), or an empty optional otherwise */
     public Optional<String> watchUrl() { return Optional.ofNullable(watchUrl); }
+    /** @return this asset's FULL participant set - every player on the asset and how they relate to it, so a
+     *          caller can identify the exact killer ({@link AssetRelationship#KILL}) and victim
+     *          ({@link AssetRelationship#DEATH}) of a kill-clip, not only the queried player's own
+     *          {@link #viewerRelation()}; an unmodifiable, possibly-empty list, never {@code null} */
+    public List<AssetParticipant> participants() { return participants; }
 
     private static String requiredIdentifier(String value, String name) {
         if (value == null || value.trim().isEmpty()) {
@@ -153,6 +163,26 @@ public final class ReplayCatalogEntry {
         return trimmed;
     }
 
+    /**
+     * Defensively copies the builder's participant list into an unmodifiable one, dropping any {@code null}
+     * element and treating a {@code null} or empty list as ABSENT (an empty, unmodifiable list). The wire
+     * carries {@code participants} only on a player-replay listing and an older server never emits it at all,
+     * so an omitted value simply means "no participant set", which keeps the mapper unknown-field-tolerant
+     * and backward compatible.
+     */
+    private static List<AssetParticipant> unmodifiableParticipants(List<AssetParticipant> participants) {
+        if (participants == null || participants.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<AssetParticipant> copy = new ArrayList<AssetParticipant>(participants.size());
+        for (AssetParticipant participant : participants) {
+            if (participant != null) {
+                copy.add(participant);
+            }
+        }
+        return Collections.unmodifiableList(copy);
+    }
+
     /** A fluent builder for {@link ReplayCatalogEntry}. Not thread-safe; build one entry per builder. */
     public static final class Builder {
         private final String assetId;
@@ -170,6 +200,7 @@ public final class ReplayCatalogEntry {
         private boolean playbackEligible;
         private boolean expired;
         private String watchUrl;
+        private List<AssetParticipant> participants;
 
         private Builder(String assetId, String collectionId, AssetKind kind) {
             this.assetId = assetId;
@@ -307,6 +338,19 @@ public final class ReplayCatalogEntry {
          */
         public Builder watchUrl(String watchUrl) {
             this.watchUrl = watchUrl;
+            return this;
+        }
+
+        /**
+         * Sets this asset's full participant set. Defensively copied on {@link #build()}; a {@code null} or
+         * empty list is treated as no participant set. The cloud supplies this only on a player-replay
+         * listing, so an entry built from any other listing simply has an empty participant set.
+         *
+         * @param participants the participants, or {@code null} for none
+         * @return this builder
+         */
+        public Builder participants(List<AssetParticipant> participants) {
+            this.participants = participants;
             return this;
         }
 
