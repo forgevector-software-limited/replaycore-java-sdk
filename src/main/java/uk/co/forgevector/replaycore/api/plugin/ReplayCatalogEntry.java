@@ -50,6 +50,7 @@ public final class ReplayCatalogEntry {
     private final boolean thumbnailReady;
     private final boolean playbackEligible;
     private final boolean expired;
+    private final String watchUrl;
 
     private ReplayCatalogEntry(Builder b) {
         this.assetId = requiredIdentifier(b.assetId, "assetId");
@@ -66,6 +67,7 @@ public final class ReplayCatalogEntry {
         this.thumbnailReady = b.thumbnailReady;
         this.playbackEligible = b.playbackEligible;
         this.expired = b.expired;
+        this.watchUrl = optionalUrl(b.watchUrl, "watchUrl");
     }
 
     /**
@@ -111,12 +113,44 @@ public final class ReplayCatalogEntry {
     public boolean playbackEligible() { return playbackEligible; }
     /** @return whether retention has expired this asset before it could be watched */
     public boolean expired() { return expired; }
+    /** @return a durable, ready-to-use browser watch URL for this asset, present only when the asset is
+     *          released and public/unlisted (the cloud never emits one for a held, private or revoked
+     *          asset), or an empty optional otherwise */
+    public Optional<String> watchUrl() { return Optional.ofNullable(watchUrl); }
 
     private static String requiredIdentifier(String value, String name) {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException(name + " must not be empty");
         }
         return value.trim();
+    }
+
+    /**
+     * Validates an OPTIONAL URL field the same way {@link FinalizeResult}/{@link ReplayOperationResult} do
+     * (rejected, never truncated, when over-length or control-character-bearing), but treats {@code null} OR
+     * a blank value as ABSENT rather than an error: the wire carries {@code watch_url} only for a
+     * released public/unlisted asset, so an omitted or empty value simply means "no durable link", which
+     * keeps the mapper unknown-field-tolerant and backward compatible.
+     */
+    private static String optionalUrl(String value, String name) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.length() > ReplayOperationResult.MAX_URL_LENGTH) {
+            throw new IllegalArgumentException(
+                    name + " must be at most " + ReplayOperationResult.MAX_URL_LENGTH + " characters");
+        }
+        for (int i = 0; i < trimmed.length(); i++) {
+            char ch = trimmed.charAt(i);
+            if (ch < 0x20 || ch == 0x7f) {
+                throw new IllegalArgumentException(name + " must not contain control characters");
+            }
+        }
+        return trimmed;
     }
 
     /** A fluent builder for {@link ReplayCatalogEntry}. Not thread-safe; build one entry per builder. */
@@ -135,6 +169,7 @@ public final class ReplayCatalogEntry {
         private boolean thumbnailReady;
         private boolean playbackEligible;
         private boolean expired;
+        private String watchUrl;
 
         private Builder(String assetId, String collectionId, AssetKind kind) {
             this.assetId = assetId;
@@ -260,6 +295,18 @@ public final class ReplayCatalogEntry {
          */
         public Builder expired(boolean expired) {
             this.expired = expired;
+            return this;
+        }
+
+        /**
+         * Sets a durable, ready-to-use browser watch URL for this asset. The cloud supplies one only for a
+         * released public/unlisted asset; a {@code null} or blank value is treated as absent.
+         *
+         * @param watchUrl the URL, or {@code null} to clear
+         * @return this builder
+         */
+        public Builder watchUrl(String watchUrl) {
+            this.watchUrl = watchUrl;
             return this;
         }
 
