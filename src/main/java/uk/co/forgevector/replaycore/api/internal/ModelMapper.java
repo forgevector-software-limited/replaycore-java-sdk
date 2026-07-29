@@ -133,21 +133,31 @@ public final class ModelMapper {
             }
             @SuppressWarnings("unchecked")
             Map<String, Object> server = (Map<String, Object>) element;
-            String id = str(server, "id");
-            String name = str(server, "name");
-            if (id == null || name == null) {
-                throw new JsonParseException("server entry is missing 'id' or 'name'");
-            }
-            servers.add(new ServerInstance(
-                    id,
-                    name,
-                    ServerStatus.fromWire(str(server, "status")),
-                    instant(server, "lastSeenAt"),
-                    str(server, "pluginVersion"),
-                    intOrNull(server, "playerCount"),
-                    longValue(server, "replayCount", 0L)));
+            servers.add(toServerInstance(server));
         }
         return java.util.Collections.unmodifiableList(servers);
+    }
+
+    /**
+     * Maps one connected-server response.
+     *
+     * @param server the parsed server object
+     * @return one immutable server instance
+     */
+    public static ServerInstance toServerInstance(Map<String, Object> server) {
+        String id = str(server, "id");
+        String name = str(server, "name");
+        if (id == null || name == null) {
+            throw new JsonParseException("server response is missing 'id' or 'name'");
+        }
+        return new ServerInstance(
+                id,
+                name,
+                ServerStatus.fromWire(str(server, "status")),
+                instant(server, "lastSeenAt"),
+                str(server, "pluginVersion"),
+                intOrNull(server, "playerCount"),
+                longValue(server, "replayCount", 0L));
     }
 
     /**

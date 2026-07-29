@@ -10,7 +10,12 @@ Create a separate key for each integration and grant only the scopes it uses:
 - `replays:read` lists and reads replay metadata.
 - `replays:write` adds timeline markers.
 - `servers:read` lists connected server instances.
-- `analytics:read` is reserved and is not required by the current SDK.
+- `servers:write` creates, renames and removes server setups.
+- `setup:read` inspects allowlisted workspace configuration.
+- `setup:write` changes allowlisted workspace configuration and can only be
+  granted by an active workspace owner.
+- Other specialised scopes should only be granted when the integration uses
+  their corresponding public API.
 
 Revoke a key from the ReplayCore dashboard when an integration is retired or a
 credential may have been exposed. Use different keys for development and
@@ -38,6 +43,13 @@ for data outside the key's account is not returned to the caller.
 Access control remains a server-side responsibility. Client-side validation is
 provided for earlier, clearer errors and must not be treated as an authorisation
 boundary.
+
+Server and workspace management keys are bound to the user who created them.
+The cloud ignores caller-supplied actor headers and derives the actor from the
+key. It then rechecks the user's live role and permissions, including
+no-escalation and last-owner protections. Revoke these keys before removing the
+automation, and use a dedicated owner-controlled key only when full workspace
+setup is genuinely required.
 
 ## Transport
 

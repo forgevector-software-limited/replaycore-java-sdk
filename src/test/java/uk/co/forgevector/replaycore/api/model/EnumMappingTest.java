@@ -55,6 +55,11 @@ class EnumMappingTest {
         assertEquals("replays:read", ApiScope.REPLAYS_READ.wireValue());
         assertEquals("replays:write", ApiScope.REPLAYS_WRITE.wireValue());
         assertEquals("servers:read", ApiScope.SERVERS_READ.wireValue());
+        assertEquals("servers:write", ApiScope.SERVERS_WRITE.wireValue());
+        assertEquals("setup:read", ApiScope.SETUP_READ.wireValue());
+        assertEquals("setup:write", ApiScope.SETUP_WRITE.wireValue());
+        assertEquals("portals:write", ApiScope.PORTALS_WRITE.wireValue());
+        assertEquals("catalog:read", ApiScope.CATALOG_READ.wireValue());
         assertEquals("analytics:read", ApiScope.ANALYTICS_READ.wireValue());
     }
 }

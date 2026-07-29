@@ -12,6 +12,10 @@ and its servers. Issue one from the ReplayCore dashboard:
    - `replays:read`: list and read replay metadata.
    - `replays:write`: add timeline markers.
    - `servers:read`: list connected server instances.
+   - `servers:write`: create, rename or remove server setups.
+   - `setup:read`: inspect workspace configuration.
+   - `setup:write`: change allowlisted workspace configuration. Only an active
+     workspace owner can grant this scope.
 3. Copy the key **once**, at creation time. It begins `rc_live_` and is shown
    only then. Store it securely at creation time.
 
@@ -54,6 +58,18 @@ System.out.println("got " + page.getResults().size() + " replays");
 If the key is wrong you will get an `AuthenticationException`; if it lacks the
 `replays:read` scope, an `AuthorizationException`.
 
+To verify that a management key can automate the workspace, read the live
+capability document:
+
+```java
+ApiResponse capabilities = client.getSetup("capabilities");
+System.out.println(capabilities.toJson().orElse("{}"));
+```
+
+Management calls are actor-bound. ReplayCore records the user who created the
+key and checks that user's current workspace permissions on every request, so
+removing or demoting that user also removes the automation's inherited access.
+
 ## 5. Choose blocking or async
 
 - **Blocking** (`ReplayCoreClient`) is the simplest model for scripts, web
@@ -87,6 +103,10 @@ section and [`api-reference.md`](api-reference.md) for the full list.
 
 - Read the [API reference](api-reference.md) for every method, model and field.
 - Read the [security model](security.md) before deploying.
+- Use the workspace setup methods for categories, recording settings,
+  integrations, Network Portals, resource packs, team roles and permission
+  groups. The [API reference](api-reference.md#workspace-setup-automation)
+  lists the complete boundary.
 - If your plugin runs on the same server as the recorder, read
   [plugin extensions](plugin-extensions.md) for the in-process contract. It
   covers timeline bookmarks, clips, death-replay links, and match scopes for

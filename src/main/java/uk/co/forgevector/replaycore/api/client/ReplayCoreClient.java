@@ -24,10 +24,13 @@ import uk.co.forgevector.replaycore.api.internal.Json;
 import uk.co.forgevector.replaycore.api.internal.JsonParseException;
 import uk.co.forgevector.replaycore.api.internal.ModelMapper;
 import uk.co.forgevector.replaycore.api.internal.Urls;
+import uk.co.forgevector.replaycore.api.model.ApiResponse;
 import uk.co.forgevector.replaycore.api.model.ReplayMetadata;
 import uk.co.forgevector.replaycore.api.model.ReplayPage;
 import uk.co.forgevector.replaycore.api.model.ReplayQuery;
 import uk.co.forgevector.replaycore.api.model.ServerInstance;
+import uk.co.forgevector.replaycore.api.model.ServerSetup;
+import uk.co.forgevector.replaycore.api.model.ServerSetupRequest;
 import uk.co.forgevector.replaycore.api.model.TimelineEventRequest;
 import uk.co.forgevector.replaycore.api.model.TimelineMarker;
 
@@ -66,9 +69,11 @@ import uk.co.forgevector.replaycore.api.model.TimelineMarker;
  *
  * <h2>Coverage</h2>
  * This client wraps the endpoints ReplayCore exposes to API-key holders today:
- * listing and reading replay metadata, listing connected server instances, and
- * writing custom timeline markers. See the SDK documentation for the current
- * scope.
+ * listing and reading replay metadata, managing connected server setups,
+ * writing custom timeline markers, and reading or changing the workspace setup
+ * resources exposed by ReplayCore. The generic JSON call keeps new public
+ * endpoints accessible without forcing applications to wait for a new typed
+ * SDK model.
  */
 public final class ReplayCoreClient {
 
@@ -191,6 +196,156 @@ public final class ReplayCoreClient {
     }
 
     /**
+     * Creates a pending server setup and reserves its plan slot.
+     *
+     * @param request the server name and optional placement/template
+     * @return the new server id and cleaned name
+     * @throws ReplayCoreException if ReplayCore refuses or cannot complete the request
+     */
+    public ServerSetup createServer(ServerSetupRequest request) throws ReplayCoreException {
+        if (request == null) {
+            throw new IllegalArgumentException("request must not be null");
+        }
+        ApiResponse response = requestJson("POST", "/v1/api/servers", request.toBody());
+        Map<String, Object> body = requireObject(response);
+        Object serverId = body.get("serverId");
+        Object name = body.get("name");
+        if (!(serverId instanceof String) || !(name instanceof String)) {
+            throw invalidResponse(new JsonParseException(
+                    "server setup response is missing 'serverId' or 'name'"));
+        }
+        return new ServerSetup((String) serverId, (String) name);
+    }
+
+    /**
+     * Renames a connected server.
+     *
+     * @param serverId the connected server UUID
+     * @param name     the new display name
+     * @return the updated server record
+     * @throws ReplayCoreException if ReplayCore refuses or cannot complete the request
+     */
+    public ServerInstance renameServer(String serverId, String name) throws ReplayCoreException {
+        Map<String, Object> body = new java.util.LinkedHashMap<String, Object>();
+        body.put("name", requireValue(name, "name"));
+        ApiResponse response = requestJson(
+                "PATCH",
+                "/v1/api/servers/" + Urls.encodePathSegment(requireValue(serverId, "serverId")),
+                body);
+        try {
+            return ModelMapper.toServerInstance(requireObject(response));
+        } catch (JsonParseException e) {
+            throw invalidResponse(e);
+        }
+    }
+
+    /**
+     * Deauthorises a connected server through the reversible compatibility route.
+     *
+     * @param serverId the connected server UUID
+     * @throws ReplayCoreException if ReplayCore refuses or cannot complete the request
+     */
+    public void deauthoriseServer(String serverId) throws ReplayCoreException {
+        requestJson("DELETE", "/v1/api/servers/"
+                + Urls.encodePathSegment(requireValue(serverId, "serverId")), null);
+    }
+
+    /**
+     * Permanently removes a connected server record.
+     *
+     * @param serverId the connected server UUID
+     * @throws ReplayCoreException if ReplayCore refuses or cannot complete the request
+     */
+    public void permanentlyRemoveServer(String serverId) throws ReplayCoreException {
+        requestJson("DELETE", "/v1/api/servers/permanent/"
+                + Urls.encodePathSegment(requireValue(serverId, "serverId")), null);
+    }
+
+    /**
+     * Cancels a server setup that has not connected yet.
+     *
+     * @param serverId the pending server id
+     * @throws ReplayCoreException if ReplayCore refuses or cannot complete the request
+     */
+    public void cancelServerSetup(String serverId) throws ReplayCoreException {
+        requestJson("DELETE", "/v1/api/servers/pending/"
+                + Urls.encodePathSegment(requireValue(serverId, "serverId")), null);
+    }
+
+    /**
+     * Reads one allowlisted workspace setup resource.
+     *
+     * @param path the setup path without {@code /v1/api/setup/}
+     * @return the successful status and immutable JSON response tree
+     * @throws ReplayCoreException if ReplayCore refuses or cannot complete the request
+     */
+    public ApiResponse getSetup(String path) throws ReplayCoreException {
+        return requestSetup("GET", path, null);
+    }
+
+    /**
+     * Calls one allowlisted workspace setup resource.
+     *
+     * <p>Use GET with {@code setup:read}; POST, PUT, PATCH and DELETE require
+     * {@code setup:write}. The server applies the same actor permissions,
+     * selected-network access, plan checks and validation as the dashboard.
+     *
+     * @param method   GET, POST, PUT, PATCH or DELETE
+     * @param path     the setup path without {@code /v1/api/setup/}
+     * @param jsonBody a JSON-compatible tree, or {@code null} for no body
+     * @return the successful status and immutable JSON response tree
+     * @throws ReplayCoreException if ReplayCore refuses or cannot complete the request
+     */
+    public ApiResponse requestSetup(String method, String path, Object jsonBody)
+            throws ReplayCoreException {
+        String clean = requireValue(path, "path");
+        if (clean.startsWith("/") || clean.contains("..") || clean.contains("\\")
+                || clean.contains("#") || clean.contains("://")) {
+            throw new IllegalArgumentException("path must be a relative setup resource path");
+        }
+        return requestJson(method, "/v1/api/setup/" + clean, jsonBody);
+    }
+
+    /**
+     * Calls any JSON endpoint on the configured ReplayCore API origin.
+     *
+     * <p>This future-proofs integrations while typed convenience methods are
+     * added. The path cannot change the configured origin, and normal server-side
+     * API-key scopes and tenant isolation still apply.
+     *
+     * @param method   GET, POST, PUT, PATCH or DELETE
+     * @param path     an absolute API path beginning {@code /v1/}
+     * @param jsonBody a JSON-compatible tree, or {@code null} for no body
+     * @return the successful status and immutable JSON response tree
+     * @throws ReplayCoreException if ReplayCore refuses or cannot complete the request
+     */
+    public ApiResponse requestJson(String method, String path, Object jsonBody)
+            throws ReplayCoreException {
+        String verb = requireValue(method, "method").toUpperCase(java.util.Locale.ROOT);
+        if (!verb.equals("GET") && !verb.equals("POST") && !verb.equals("PUT")
+                && !verb.equals("PATCH") && !verb.equals("DELETE")) {
+            throw new IllegalArgumentException("method must be GET, POST, PUT, PATCH or DELETE");
+        }
+        String cleanPath = requireValue(path, "path");
+        if (!cleanPath.startsWith("/v1/") || cleanPath.startsWith("//")
+                || cleanPath.contains("://") || cleanPath.contains("\\")
+                || cleanPath.contains("..") || cleanPath.contains("#")) {
+            throw new IllegalArgumentException("path must be a safe absolute /v1/ API path");
+        }
+        String encodedBody = jsonBody == null ? null : Json.write(jsonBody);
+        HttpResponse response = send(verb, Urls.join(baseUrl, cleanPath), encodedBody);
+        String raw = response.getBody();
+        if (raw == null || raw.trim().isEmpty()) {
+            return new ApiResponse(response.getStatusCode(), null);
+        }
+        try {
+            return new ApiResponse(response.getStatusCode(), Json.parse(raw));
+        } catch (JsonParseException e) {
+            throw invalidResponse(e);
+        }
+    }
+
+    /**
      * Creates a custom timeline marker on a replay.
      *
      * <p>The request targets either an existing replay or a server's currently
@@ -264,6 +419,23 @@ public final class ReplayCoreClient {
         } catch (JsonParseException e) {
             throw new ReplayCoreTransportException("could not parse ReplayCore response: " + e.getMessage(), e);
         }
+    }
+
+    private static Map<String, Object> requireObject(ApiResponse response)
+            throws ReplayCoreTransportException {
+        if (!response.getObject().isPresent()) {
+            throw new ReplayCoreTransportException(
+                    "ReplayCore returned a successful response that was not a JSON object",
+                    new IllegalStateException("expected JSON object"));
+        }
+        return response.getObject().get();
+    }
+
+    private static String requireValue(String value, String name) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException(name + " must not be blank");
+        }
+        return value.trim();
     }
 
     private static ReplayCoreTransportException invalidResponse(JsonParseException cause) {

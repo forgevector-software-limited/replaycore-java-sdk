@@ -5,7 +5,7 @@ REST endpoints it wraps. It reflects the endpoints ReplayCore exposes to API-key
 holders today; see [Endpoint coverage](#endpoint-coverage) for the current
 boundary.
 
-This page documents the `1.5.0` release. Documentation for earlier releases
+This page documents the `1.6.0` release. Documentation for earlier releases
 remains available from each release's Git tag.
 
 The generated Javadoc is the authoritative, method-level reference. Build it with
@@ -24,12 +24,21 @@ Configured through `ReplayCoreClient.builder()`. Immutable and thread-safe.
 | `listReplays(ReplayQuery)` → `ReplayPage` | `GET /v1/api/replays` | `replays:read` |
 | `getReplay(String id)` → `ReplayMetadata` | `GET /v1/api/replays/{id}` | `replays:read` |
 | `listServers()` → `List<ServerInstance>` | `GET /v1/api/servers` | `servers:read` |
+| `createServer(ServerSetupRequest)` → `ServerSetup` | `POST /v1/api/servers` | `servers:write` |
+| `renameServer(String id, String name)` → `ServerInstance` | `PATCH /v1/api/servers/{id}` | `servers:write` |
+| `deauthoriseServer(String id)` | `DELETE /v1/api/servers/{id}` | `servers:write` |
+| `permanentlyRemoveServer(String id)` | `DELETE /v1/api/servers/permanent/{id}` | `servers:write` |
+| `cancelServerSetup(String id)` | `DELETE /v1/api/servers/pending/{id}` | `servers:write` |
+| `getSetup(String path)` → `ApiResponse` | `GET /v1/api/setup/{path...}` | `setup:read` |
+| `requestSetup(String method, String path, Object body)` → `ApiResponse` | `/v1/api/setup/{path...}` | `setup:read` or `setup:write` |
+| `requestJson(String method, String path, Object body)` → `ApiResponse` | Any documented JSON `/v1/` endpoint | Endpoint-specific |
 | `createTimelineMarker(TimelineEventRequest)` → `TimelineMarker` | `POST /v1/api/timeline-events` | `replays:write` |
 
 ### `ReplayCoreAsyncClient` (asynchronous)
 
-The same four methods, each returning a `CompletableFuture`. Build via
-`builder().buildAsync()`, or wrap an existing `ReplayCoreClient`. A failure
+Every synchronous operation above has an asynchronous equivalent returning a
+`CompletableFuture`. Build via `builder().buildAsync()`, or wrap an existing
+`ReplayCoreClient`. A failure
 completes the future exceptionally with the same `ReplayCoreException` types.
 `blocking()` returns the underlying synchronous client.
 
@@ -141,8 +150,11 @@ than failing to deserialise.
   `UNLISTED` (`unlisted`), `PUBLIC` (`public`).
 - **`ArchiveStatus`**: `ORIGINAL` (`original`), `REDACTED` (`redacted`),
   `CRASH_FINALISED` (`crash-finalised`).
-- **`ApiScope`**: `REPLAYS_READ`, `REPLAYS_WRITE`, `SERVERS_READ`, and
-  `ANALYTICS_READ` (reserved).
+- **`ApiScope`**: `REPLAYS_READ`, `REPLAYS_WRITE`, `SERVERS_READ`,
+  `SERVERS_WRITE`, `SETUP_READ`, `SETUP_WRITE`, `ANALYTICS_READ`,
+  `PORTALS_READ`, `PORTALS_WRITE`, `RECORDINGS_WRITE`, `COLLECTIONS_WRITE`,
+  `CLIPS_WRITE`, `CATALOG_READ`, `RELEASE_WRITE`, `PLAYBACK_ISSUE`,
+  `STAFF_BYPASS`, and `ADMIN`.
 
 ### `Participant`
 
@@ -156,6 +168,12 @@ than failing to deserialise.
 `listServers()` returns an unmodifiable list of the Minecraft server instances
 connected to the account. It requires `servers:read` and is not paginated.
 
+`createServer`, `renameServer`, `deauthoriseServer`, `permanentlyRemoveServer`
+and `cancelServerSetup` require `servers:write`. These calls are actor-bound:
+the cloud attributes them to the user who created the key and rechecks that
+user's current workspace permissions. A legacy key without that binding cannot
+perform management writes.
+
 ### `ServerInstance`
 
 | Accessor | Meaning |
@@ -167,6 +185,50 @@ connected to the account. It requires `servers:read` and is not paginated.
 | `getPluginVersion()` | Last reported ReplayCore plugin version, when available. |
 | `getPlayerCount()` | Live player count; absent while offline or unavailable. |
 | `getReplayCount()` | Number of replays recorded by this server instance. |
+
+---
+
+## Workspace setup automation
+
+`getSetup(path)` and `requestSetup(method, path, body)` expose the same
+allowlisted setup handlers used by the dashboard. The path is relative to
+`/v1/api/setup/`, for example `capture-settings`, `team/members`, or
+`team/members/{userId}`. The SDK rejects absolute URLs, traversal and fragments
+before making a request.
+
+The setup surface covers:
+
+- capture, death-cam, retention, recording-key and recorder-credential settings;
+- categories, grouping, replay visibility and sharing;
+- integrations and managed plugin configuration;
+- networks, Network Portals, custom domains, feeds and white-labelling;
+- resource-pack metadata and URL-based fetching;
+- governance and in-game viewing;
+- team members, invitations, roles, delegated grants and permission groups.
+
+Reads require `setup:read`; writes require `setup:write`. Only an active
+workspace owner can grant `setup:write`. The acting user's live role,
+permissions, tier limits and no-escalation rules still apply to every request.
+Billing, API-key management, account deletion, replay/media payloads and
+operator-only administration are deliberately excluded.
+
+The capability document is available through
+`getSetup("capabilities")`. It reports the current resource prefixes, methods,
+OpenAPI location and documentation location so an integration can discover the
+supported setup boundary.
+
+### `ApiResponse`
+
+Generic calls return the successful HTTP status plus a recursively immutable
+JSON tree. Objects are `Map<String,Object>`, arrays are `List<Object>`, and
+scalars use normal JDK values. Use `getObject()` when an object is expected,
+`getBody()` for any JSON value, or `toJson()` for compact JSON. A successful
+`204 No Content` response has no body.
+
+`requestJson(method, path, body)` is a future-compatible escape hatch for other
+documented JSON endpoints on the configured ReplayCore origin. It accepts only
+absolute `/v1/` paths and never accepts an external URL, so it cannot redirect
+the API key to another host.
 
 ---
 
@@ -227,7 +289,9 @@ status) over the human-readable `detail`.
 
 - List/search replays: `GET /v1/api/replays`.
 - Get one replay's metadata: `GET /v1/api/replays/{id}`.
-- List connected servers: `GET /v1/api/servers`.
+- List and manage connected or pending servers: `/v1/api/servers`.
+- Read and change allowlisted workspace configuration:
+  `/v1/api/setup/{path...}`.
 - Create a timeline marker: `POST /v1/api/timeline-events`.
 
 **Not yet available to API-key holders** (intentionally not exposed by this SDK):
@@ -237,9 +301,10 @@ status) over the human-readable `detail`.
 - **Analytics**. `analytics:read` is reserved, but the current public API does not
   provide an analytics endpoint.
 
-The SDK deliberately wraps only the documented public developer API. Dashboard,
-recorder, and administrative routes use separate access models and are outside
-this SDK's contract.
+The SDK wraps only documented, API-key-authenticated contracts. The setup
+facade intentionally reuses dashboard validation while preserving tenant and
+actor identity; recorder credentials, browser sessions and operator-only
+administrative routes remain separate access models.
 
 ---
 

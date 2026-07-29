@@ -4,8 +4,8 @@ The official Java SDK for the [ReplayCore](https://replaycore.com) developer API
 
 ReplayCore records Minecraft server gameplay and lets it be watched back, 1:1, in
 a browser. This SDK lets plugin developers and server owners work with their own
-replays directly from Java, list connected server instances, and annotate replay
-timelines without hand-rolling HTTP calls.
+replays directly from Java, manage server instances, automate workspace setup,
+and annotate replay timelines without hand-rolling HTTP calls.
 
 It is built for the Minecraft plugin ecosystem: it targets **Java 8** bytecode,
 has **zero third-party runtime dependencies** (JDK only), and offers both a
@@ -25,12 +25,12 @@ a Bukkit, Spigot, Paper or Folia plugin.
 Releases are distributed through [JitPack](https://jitpack.io). Add the JitPack
 repository, then the dependency.
 
-The latest tagged release is `v1.5.0`, which reports SDK version `1.5.0` and
+The latest tagged release is `v1.6.0`, which reports SDK version `1.6.0` and
 tracks the matching ReplayCore product release. Use a tagged release for
 production rather than a mutable branch build.
 
 Some earlier product documentation named a `v1.1.5` coordinate. That tag was
-never published, so a build depending on it cannot resolve. Move to `v1.5.0`.
+never published, so a build depending on it cannot resolve. Move to `v1.6.0`.
 
 **Gradle**
 
@@ -40,7 +40,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.5.0'
+    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.6.0'
 }
 ```
 
@@ -57,7 +57,7 @@ dependencies {
 <dependency>
     <groupId>com.github.forgevector-software-limited</groupId>
     <artifactId>replaycore-java-sdk</artifactId>
-    <version>v1.5.0</version>
+    <version>v1.6.0</version>
 </dependency>
 ```
 
@@ -136,6 +136,42 @@ System.out.println("created marker " + marker.getId());
 You can also target a server's **currently active** recording, which is handy
 for live tagging, using `TimelineEventRequest.forActiveRecording(serverId)`.
 Writing markers requires a key with the `replays:write` scope.
+
+### Automate server and workspace setup
+
+Create a pending recorder server, then configure any allowlisted dashboard
+resource through the workspace setup API:
+
+```java
+import java.util.Collections;
+import uk.co.forgevector.replaycore.api.model.ApiResponse;
+import uk.co.forgevector.replaycore.api.model.ServerSetup;
+import uk.co.forgevector.replaycore.api.model.ServerSetupRequest;
+
+ServerSetup server = client.createServer(
+        ServerSetupRequest.builder("Lobby 1").build());
+
+ApiResponse permissions = client.requestSetup(
+        "PATCH",
+        "team/members/11111111-1111-1111-1111-111111111111",
+        Collections.singletonMap("role", "admin"));
+
+System.out.println("server id: " + server.getServerId());
+System.out.println("permissions status: " + permissions.getStatusCode());
+```
+
+Use `servers:write` for server lifecycle calls, `setup:read` to inspect workspace
+configuration, and `setup:write` to change it. Only an active workspace owner can
+grant `setup:write`; every management call is also checked against the key
+creator's current workspace permissions.
+
+`getSetup(path)` and `requestSetup(method, path, body)` cover categories, capture
+settings, custom domains, feeds, governance, grouping, integrations, Network
+Portals, plugin configuration, recorder credentials, resource packs, retention,
+team members, invitations and permission groups, visibility and white-labelling.
+`requestJson(...)` provides an origin-bound JSON escape hatch for future
+documented `/v1/` endpoints without allowing credentials to be redirected to a
+different host.
 
 ### Non-blocking use inside a plugin
 
