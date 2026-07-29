@@ -3,11 +3,13 @@
 The package `uk.co.forgevector.replaycore.api.plugin` is the supported Java
 contract for plugins running on the same Minecraft server as ReplayCore. Contract
 version `1.1` provides recording state, lifecycle events, timeline bookmarks,
-on-demand clips, recent kill-replay links, and match scopes.
+on-demand clips, recent kill-replay links, match scopes and externally managed
+player-shaped subjects.
 
 Match scopes were added to the contract as an optional capability rather than a
 version bump, so a recorder that offers them still reports `apiVersion()` as
-`1.1`. Detect the surface with `matches()`, not with a version comparison.
+`1.1`. Detect the surface with `matches()` or `externalSubjects()`, not with a
+version comparison.
 
 ## Add the contract to your plugin
 
@@ -16,7 +18,7 @@ running ReplayCore plugin supplies these classes:
 
 ```groovy
 dependencies {
-    compileOnly 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.4.1'
+    compileOnly 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.5.0'
 }
 ```
 
@@ -56,8 +58,9 @@ if (!replayCore.apiVersion().startsWith("1.")) {
 ```
 
 `timeline()` and `recordingControl()` are available while ReplayCore is enabled.
-`clips()`, `killReplay()` and `matches()` return `Optional` because those
-features depend on the server's ReplayCore configuration.
+`clips()`, `killReplay()`, `matches()` and `externalSubjects()` return
+`Optional` because those features depend on the recorder version and server
+configuration.
 
 ## Read recording state
 
@@ -433,6 +436,132 @@ branch takes the same path in tests as against a current recorder.
 named, which is what lets a test with two matches open assert that a marker or
 clip was addressed to the right one.
 
+## Record externally managed player-shaped subjects
+
+`ReplayCoreExternalSubjectApi` is the Bukkit-free capture contract for a bot,
+NPC, simulation actor or remote game engine that owns authoritative
+player-shaped state. It does not invent movement or interpolate missing input.
+The integration publishes the facts it owns and ReplayCore writes only accepted
+frames and events.
+
+The surface is optional. Resolve it once after ReplayCore enables:
+
+```java
+Optional<ReplayCoreExternalSubjectApi> available = replayCore.externalSubjects();
+if (!available.isPresent()) {
+    getLogger().info("This ReplayCore recorder does not expose external subjects.");
+    return;
+}
+ReplayCoreExternalSubjectApi external = available.get();
+```
+
+### Open one logical external recording
+
+`openScope` takes the integration's stable key, its own recording id and bounded
+catalogue metadata. Repeating the same compound identity resolves the same
+logical recording instead of creating a duplicate.
+
+```java
+ReplayScope scope = external.openScope(
+        "practice-engine",
+        match.id(),
+        ReplayScopeOptions.builder("post-match")
+                .category("practice")
+                .mode(match.mode())
+                .worlds(Collections.singletonList(match.worldName()))
+                .metadata(Collections.singletonMap("queue", match.queueName()))
+                .build());
+```
+
+A scope is a window over the continuous recorder. Opening or ending it never
+starts, stops, rotates or cuts physical capture, and independent scopes may be
+open concurrently.
+
+### Register and publish an actor
+
+Register each subject with a stable UUID, profile name, signed texture and
+initial transform. The returned handle is opaque and valid only for that
+subject, scope and recorder instance.
+
+```java
+SubjectTransform initial = SubjectTransform
+        .builder(worldId, spawnX, spawnY, spawnZ)
+        .rotation(yaw, pitch)
+        .headYaw(headYaw)
+        .onGround(true)
+        .pose(SubjectPose.STANDING)
+        .build();
+
+ExternalSubjectDescriptor descriptor =
+        ExternalSubjectDescriptor.playerShaped(
+                actorId, actorName, signedTexture, initial);
+
+ExternalSubjectHandle handle =
+        external.registerExternalSubject(scope, descriptor);
+```
+
+Publish complete authoritative frames at replay ticks:
+
+```java
+ExternalSubjectFrame frame = ExternalSubjectFrame
+        .builder(replayTick, transform)
+        .metadata(metadata)
+        .equipment(equipment)
+        .effects(effects)
+        .build();
+
+ExternalSubjectPublishResult result =
+        external.publishExternalSubjectFrame(handle, frame);
+
+if (result == ExternalSubjectPublishResult.BACKPRESSURE) {
+    slowThePublisher();
+}
+```
+
+Publication is local, bounded and non-blocking. `ACCEPTED` means ReplayCore's
+durable recorder boundary accepted the complete record. `BACKPRESSURE` means it
+did not, so the integration can slow or retry without ReplayCore silently
+dropping a previously accepted record. Other result values describe invalid,
+closed or unavailable handles and must also be handled explicitly.
+
+Use `publishExternalSubjectEvent` for discrete visual facts such as teleport,
+equipment, animation and effect changes. Use
+`updateExternalSubjectPresentation` for a versioned name, skin or visibility
+change. Dedicated despawn, respawn and unregister calls maintain the same
+canonical lifecycle state as their event equivalents.
+
+### Finish and retrieve the durable result
+
+End the logical recording with an idempotency key:
+
+```java
+external.endScope(scope, EndScopeRequest.builder("end:" + match.id()).build())
+        .thenAccept(result ->
+                getLogger().info("Replay finalising: " + result.state()));
+```
+
+The immediate result may still be recording or processing. Use the compound
+integration identity for restart-safe lookup or waiting:
+
+```java
+external.awaitTerminalState(
+        "practice-engine", match.id(), Duration.ofMinutes(10))
+        .thenAccept(result -> {
+            if (result.state() == ReplayState.PLAYABLE) {
+                result.optionalWatchUrl().ifPresent(url ->
+                        getLogger().info("Replay ready: " + url));
+            } else if (result.state() == ReplayState.FAILED) {
+                getLogger().warning("Replay failed: "
+                        + result.optionalFailureCode().orElse("unknown"));
+            }
+        });
+```
+
+`ReplayResult` keeps local and cloud collection identities separate and exposes
+the durable operation, asset, processing, playback and retry fields. Terminal
+results are versioned and immutable, so retries cannot rewrite a previously
+reported outcome.
+
 ## Read a player's replays and mint a watch link
 
 `ReplayCatalogApi` reads the replay catalogue for one player and mints a
@@ -518,9 +647,10 @@ legacy lane, the modern lane, and Folia.
 ## Compatibility
 
 - Check the major component of `apiVersion()` before using the contract.
-- Detect optional features with `clips()`, `killReplay()` and `matches()` on
-  every enable. `matches()` is a `default` method returning an empty `Optional`,
-  so an older recorder reports no match surface rather than failing to link.
+- Detect optional features with `clips()`, `killReplay()`, `matches()` and
+  `externalSubjects()` on every enable. `matches()` and `externalSubjects()` are
+  `default` methods returning an empty `Optional`, so an older recorder reports
+  no surface rather than failing to link.
 - Detect the scope-addressed event surface with `supportsScopeEvents()` once on
   enable. `tagScopeEvent` and `recordScopeClip` are `default` methods, so a
   recorder that predates them links fine and completes every such call

@@ -31,6 +31,13 @@
  *       logical match scope over the continuous recording, so several matches running at once each get
  *       their own replay without cutting the recording. Present only when cloud upload is configured and
  *       {@code network-integration.enabled} is not set to false.</li>
+ *   <li>{@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreExternalSubjectApi}: the additive,
+ *       Bukkit-free contract for authoritative player-shaped subjects that are not online players. The
+ *       contract and recorder-neutral capture seam are present for integration development, but the modern
+ *       and legacy recorder lanes do not attach this capability in this release. Consequently
+ *       {@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreApi#externalSubjects()} returns an empty
+ *       optional on production recorders until end-to-end archive and cloud-correlation wiring is enabled
+ *       and verified.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.ReplayCatalogApi}: read the RFC-0009 replay
  *       catalogue for one player and mint a short-lived watch ticket, the in-process twin of the developer
  *       API's {@code GET /v1/players/{uuid}/replays} and {@code POST /v1/replay-assets/{id}/watch-ticket}
@@ -80,6 +87,13 @@
  * {@link uk.co.forgevector.replaycore.api.plugin.ReplayCatalogEntry},
  * {@link uk.co.forgevector.replaycore.api.plugin.WatchTicketRequest} and
  * {@link uk.co.forgevector.replaycore.api.plugin.WatchTicketResult}).
+ *
+ * <p><strong>Contract present but not production-attached:</strong>
+ * {@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreExternalSubjectApi} and the external-subject
+ * request, state and result types it names. No modern or legacy recorder lane attaches the capability in
+ * this release, so {@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreApi#externalSubjects()} remains
+ * empty in production. Do not advertise external-subject recording as available until the end-to-end
+ * archive and cloud-correlation path has been enabled and verified.
  *
  * <p><strong>Reached through {@link uk.co.forgevector.replaycore.api.plugin.ScopeClipRequest}:</strong>
  * {@link uk.co.forgevector.replaycore.api.plugin.EventKind} and

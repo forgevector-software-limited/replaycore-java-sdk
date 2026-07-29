@@ -107,6 +107,23 @@ public interface ReplayCoreApi {
     }
 
     /**
+     * Returns the generic external player-shaped subject surface when configured.
+     *
+     * <p>This is a default capability method so existing addons and test doubles retain binary
+     * compatibility. External subjects are caller-registered and authoritative; they are never discovered
+     * from online Bukkit/NMS players and are not generic non-player entities.
+     *
+     * <p>The contract is present for integration development, but the modern and legacy recorder lanes do
+     * not attach it in this release. Production recorders therefore return an empty optional until the full
+     * archive and cloud-correlation path has been enabled and verified.
+     *
+     * @return the external-subject API, or an empty optional when it is not production-attached
+     */
+    default Optional<ReplayCoreExternalSubjectApi> externalSubjects() {
+        return Optional.empty();
+    }
+
+    /**
      * Registers a lifecycle listener. Registering the same instance twice has no additional effect.
      *
      * @param listener the listener to add; must not be {@code null}

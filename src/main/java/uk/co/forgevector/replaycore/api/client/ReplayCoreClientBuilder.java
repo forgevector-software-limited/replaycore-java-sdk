@@ -35,7 +35,7 @@ public final class ReplayCoreClientBuilder {
 
     private static final int DEFAULT_CONNECT_TIMEOUT_MILLIS = 10_000;
     private static final int DEFAULT_READ_TIMEOUT_MILLIS = 30_000;
-    static final String SDK_VERSION = "1.4.1";
+    static final String SDK_VERSION = "1.5.0";
     private static final String DEFAULT_USER_AGENT = "replaycore-java-sdk/" + SDK_VERSION;
 
     private String baseUrl = ReplayCoreClient.DEFAULT_BASE_URL;
