@@ -9,33 +9,9 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 
-/**
- * The outcome {@link ReplayCoreMatchApi#endScope} completes with: the same field set as
- * {@link ReplayOperationResult}, carried as its own type because ending a scope finalizes the collection
- * itself rather than an arbitrary operation on it.
- *
- * <p>On cloud unavailability at end-scope time, the backend spools the scope durably to local disk with its
- * idempotency key and this result is returned promptly, reflecting an in-progress state such as
- * {@link ProcessingState#QUEUED} rather than a final outcome; a late-arriving collection lands
- * {@link ReleaseState#HELD} regardless of its policy trigger, so footage that missed its moment cannot
- * auto-publish hours later. Reaching {@link ProcessingState#READY} or {@link ProcessingState#FAILED} after
- * this call returns is observed through {@link RecordingListener#onAssetReady} and
- * {@link RecordingListener#onAssetFailed}, not by re-inspecting this value, because the plugin process may
- * have restarted in the meantime.
- *
- * <p>Build one with the fluent {@link #builder(String, String)} (an {@code operationId} and a
- * {@code collectionId} are required), or with the all-arguments constructor. Field validation is identical
- * to {@link ReplayOperationResult}; see that type's documentation for the rejected-not-truncated rationale.
- *
- * <p>Immutable and thread-safe once built.
- */
+/** Immutable scope-finalisation result, including durable external-recording correlation when applicable. */
 public final class FinalizeResult {
-
-    /** Maximum length (characters) of {@link #operationId()}, {@link #collectionId()}, {@link #assetId()}
-     *  and {@link #failureCode()}; over-length values are rejected, not truncated. */
     public static final int MAX_ID_LENGTH = ReplayOperationResult.MAX_ID_LENGTH;
-    /** Maximum length (characters) of {@link #resourceUrl()} and {@link #watchUrl()}; over-length values
-     *  are rejected, not truncated. */
     public static final int MAX_URL_LENGTH = ReplayOperationResult.MAX_URL_LENGTH;
 
     private final String operationId;
@@ -48,92 +24,93 @@ public final class FinalizeResult {
     private final String resourceUrl;
     private final String watchUrl;
     private final boolean watchTicketEligible;
+    private final String localCollectionId;
+    private final String cloudCollectionId;
+    private final String integrationKey;
+    private final String externalRecordingId;
+    private final ReplayState state;
 
-    /**
-     * Creates a finalize result directly. Prefer {@link #builder(String, String)} for readability; this
-     * constructor exists for callers that already hold every field.
-     *
-     * @param operationId         the durable operation id for this end-scope call (required, non-blank)
-     * @param collectionId        the collection this scope ended into (required, non-blank)
-     * @param assetId             the full-match asset this call produced, or {@code null} if none yet
-     *                            exists (for example still queued for processing)
-     * @param processingState     the outcome processing state at the moment this call returned (required)
-     * @param failureCode         a machine-readable failure code, or {@code null} when not
-     *                            {@link ProcessingState#FAILED}
-     * @param retryable           whether re-sending the same end-scope request may succeed after a
-     *                            transient failure
-     * @param playableAt          the instant the result became (or will become) playable, or {@code null}
-     *                            if not yet known
-     * @param resourceUrl         the API resource URL for the collection, or {@code null} if not yet known
-     * @param watchUrl            a ready-to-use browser watch URL, or {@code null} when only watch-ticket
-     *                            eligibility is known
-     * @param watchTicketEligible whether a watch ticket can currently be minted for this result
-     */
+    /** Existing match-scope constructor. External-correlation fields are derived where possible. */
     public FinalizeResult(String operationId, String collectionId, String assetId,
-                           ProcessingState processingState, String failureCode, boolean retryable,
-                           Instant playableAt, String resourceUrl, String watchUrl,
-                           boolean watchTicketEligible) {
-        this.operationId = requiredIdentifier(operationId, "operationId", MAX_ID_LENGTH);
-        this.collectionId = requiredIdentifier(collectionId, "collectionId", MAX_ID_LENGTH);
-        this.assetId = assetId == null ? null : requiredIdentifier(assetId, "assetId", MAX_ID_LENGTH);
-        this.processingState = Objects.requireNonNull(processingState, "processingState must not be null");
-        this.failureCode = failureCode == null ? null : requiredIdentifier(failureCode, "failureCode", MAX_ID_LENGTH);
-        this.retryable = retryable;
-        this.playableAt = playableAt;
-        this.resourceUrl = resourceUrl == null ? null : requiredIdentifier(resourceUrl, "resourceUrl", MAX_URL_LENGTH);
-        this.watchUrl = watchUrl == null ? null : requiredIdentifier(watchUrl, "watchUrl", MAX_URL_LENGTH);
-        this.watchTicketEligible = watchTicketEligible;
+                          ProcessingState processingState, String failureCode, boolean retryable,
+                          Instant playableAt, String resourceUrl, String watchUrl,
+                          boolean watchTicketEligible) {
+        this(operationId, collectionId, assetId, processingState, failureCode, retryable,
+                playableAt, resourceUrl, watchUrl, watchTicketEligible, collectionId,
+                null, null, null, ReplayState.fromProcessingState(processingState));
     }
 
-    /**
-     * Starts building a result with the two required fields.
-     *
-     * @param operationId  the durable operation id for this end-scope call (required, non-blank)
-     * @param collectionId the collection this scope ended into (required, non-blank)
-     * @return a new builder
-     */
+    private FinalizeResult(String operationId, String collectionId, String assetId,
+                           ProcessingState processingState, String failureCode, boolean retryable,
+                           Instant playableAt, String resourceUrl, String watchUrl,
+                           boolean watchTicketEligible, String localCollectionId,
+                           String cloudCollectionId, String integrationKey,
+                           String externalRecordingId, ReplayState state) {
+        this.operationId = requiredIdentifier(operationId, "operationId", MAX_ID_LENGTH);
+        this.collectionId = requiredIdentifier(collectionId, "collectionId", MAX_ID_LENGTH);
+        this.assetId = optionalIdentifier(assetId, "assetId", MAX_ID_LENGTH);
+        this.processingState = Objects.requireNonNull(processingState, "processingState must not be null");
+        this.failureCode = optionalIdentifier(failureCode, "failureCode", MAX_ID_LENGTH);
+        this.retryable = retryable;
+        this.playableAt = playableAt;
+        this.resourceUrl = optionalIdentifier(resourceUrl, "resourceUrl", MAX_URL_LENGTH);
+        this.watchUrl = optionalIdentifier(watchUrl, "watchUrl", MAX_URL_LENGTH);
+        this.watchTicketEligible = watchTicketEligible;
+        this.localCollectionId = optionalIdentifier(localCollectionId, "localCollectionId", MAX_ID_LENGTH);
+        this.cloudCollectionId = optionalIdentifier(cloudCollectionId, "cloudCollectionId", MAX_ID_LENGTH);
+        this.integrationKey = optionalIdentifier(integrationKey, "integrationKey", MAX_ID_LENGTH);
+        this.externalRecordingId = optionalIdentifier(externalRecordingId, "externalRecordingId", MAX_ID_LENGTH);
+        this.state = Objects.requireNonNull(state, "state must not be null");
+    }
+
     public static Builder builder(String operationId, String collectionId) {
         return new Builder(operationId, collectionId);
     }
 
-    /** @return the durable operation id for this end-scope call; never {@code null} */
     public String operationId() { return operationId; }
-    /** @return the collection this scope ended into; never {@code null} */
     public String collectionId() { return collectionId; }
-    /** @return the full-match asset this call produced, or an empty optional if none yet exists */
     public Optional<String> assetId() { return Optional.ofNullable(assetId); }
-    /** @return the outcome processing state at the moment this call returned; never {@code null} */
+    /** Compatibility view for established match/catalogue callers. */
     public ProcessingState processingState() { return processingState; }
-    /** @return a machine-readable failure code, or an empty optional when not failed */
     public Optional<String> failureCode() { return Optional.ofNullable(failureCode); }
-    /** @return whether re-sending the same end-scope request may succeed after a transient failure */
     public boolean retryable() { return retryable; }
-    /** @return the instant the result became or will become playable, or an empty optional if not yet known */
     public Optional<Instant> playableAt() { return Optional.ofNullable(playableAt); }
-    /** @return the API resource URL, or an empty optional if not yet known */
     public Optional<String> resourceUrl() { return Optional.ofNullable(resourceUrl); }
-    /** @return a ready-to-use browser watch URL, or an empty optional when only watch-ticket eligibility is known */
     public Optional<String> watchUrl() { return Optional.ofNullable(watchUrl); }
-    /** @return whether a watch ticket can currently be minted for this result */
     public boolean watchTicketEligible() { return watchTicketEligible; }
 
-    private static String requiredIdentifier(String value, String name, int maxLength) {
+    /** May be null only on legacy results created outside the external-recording surface. */
+    public String localCollectionId() { return localCollectionId; }
+    /** May be null until the cloud collection has been reconciled. */
+    public String cloudCollectionId() { return cloudCollectionId; }
+    /** Non-null for every result opened through the external-recording surface. */
+    public String integrationKey() { return integrationKey; }
+    /** Non-null for every result opened through the external-recording surface. */
+    public String externalRecordingId() { return externalRecordingId; }
+    public ReplayState state() { return state; }
+
+
+    private static String requiredIdentifier(String value, String name, int maximum) {
         String trimmed = value.trim();
         if (trimmed.isEmpty()) {
             throw new IllegalArgumentException(name + " must not be empty");
         }
-        if (trimmed.length() > maxLength) {
-            throw new IllegalArgumentException(name + " must be at most " + maxLength + " characters");
+        if (trimmed.length() > maximum) {
+            throw new IllegalArgumentException(name + " must be at most " + maximum + " characters");
         }
         for (int i = 0; i < trimmed.length(); i++) {
-            if (trimmed.charAt(i) < 0x20 || trimmed.charAt(i) == 0x7f) {
+            char c = trimmed.charAt(i);
+            if (c < 0x20 || c == 0x7f) {
                 throw new IllegalArgumentException(name + " must not contain control characters");
             }
         }
         return trimmed;
     }
 
-    /** A fluent builder for {@link FinalizeResult}. Not thread-safe; build one result per builder. */
+    private static String optionalIdentifier(String value, String name, int maximum) {
+        return value == null ? null : requiredIdentifier(value, name, maximum);
+    }
+
     public static final class Builder {
         private final String operationId;
         private final String collectionId;
@@ -145,111 +122,39 @@ public final class FinalizeResult {
         private String resourceUrl;
         private String watchUrl;
         private boolean watchTicketEligible;
+        private String localCollectionId;
+        private String cloudCollectionId;
+        private String integrationKey;
+        private String externalRecordingId;
+        private ReplayState state;
 
         private Builder(String operationId, String collectionId) {
             this.operationId = operationId;
             this.collectionId = collectionId;
+            this.localCollectionId = collectionId;
         }
 
-        /**
-         * Sets the full-match asset this call produced.
-         *
-         * @param assetId the asset id, or {@code null} to clear
-         * @return this builder
-         */
-        public Builder assetId(String assetId) {
-            this.assetId = assetId;
-            return this;
-        }
+        public Builder assetId(String value) { this.assetId = value; return this; }
+        public Builder processingState(ProcessingState value) { this.processingState = value; return this; }
+        public Builder failureCode(String value) { this.failureCode = value; return this; }
+        public Builder retryable(boolean value) { this.retryable = value; return this; }
+        public Builder playableAt(Instant value) { this.playableAt = value; return this; }
+        public Builder resourceUrl(String value) { this.resourceUrl = value; return this; }
+        public Builder watchUrl(String value) { this.watchUrl = value; return this; }
+        public Builder watchTicketEligible(boolean value) { this.watchTicketEligible = value; return this; }
+        public Builder localCollectionId(String value) { this.localCollectionId = value; return this; }
+        public Builder cloudCollectionId(String value) { this.cloudCollectionId = value; return this; }
+        public Builder integrationKey(String value) { this.integrationKey = value; return this; }
+        public Builder externalRecordingId(String value) { this.externalRecordingId = value; return this; }
+        public Builder state(ReplayState value) { this.state = value; return this; }
 
-        /**
-         * Sets the outcome processing state (defaults to {@link ProcessingState#PROCESSING}).
-         *
-         * @param processingState the processing state; must not be {@code null}
-         * @return this builder
-         */
-        public Builder processingState(ProcessingState processingState) {
-            this.processingState = processingState;
-            return this;
-        }
-
-        /**
-         * Sets a machine-readable failure code.
-         *
-         * @param failureCode the failure code, or {@code null} to clear
-         * @return this builder
-         */
-        public Builder failureCode(String failureCode) {
-            this.failureCode = failureCode;
-            return this;
-        }
-
-        /**
-         * Sets whether re-sending the same end-scope request may succeed after a transient failure.
-         *
-         * @param retryable {@code true} if a retry may succeed
-         * @return this builder
-         */
-        public Builder retryable(boolean retryable) {
-            this.retryable = retryable;
-            return this;
-        }
-
-        /**
-         * Sets the instant the result became or will become playable.
-         *
-         * @param playableAt the instant, or {@code null} to clear
-         * @return this builder
-         */
-        public Builder playableAt(Instant playableAt) {
-            this.playableAt = playableAt;
-            return this;
-        }
-
-        /**
-         * Sets the API resource URL.
-         *
-         * @param resourceUrl the URL, or {@code null} to clear
-         * @return this builder
-         */
-        public Builder resourceUrl(String resourceUrl) {
-            this.resourceUrl = resourceUrl;
-            return this;
-        }
-
-        /**
-         * Sets a ready-to-use browser watch URL.
-         *
-         * @param watchUrl the URL, or {@code null} to clear
-         * @return this builder
-         */
-        public Builder watchUrl(String watchUrl) {
-            this.watchUrl = watchUrl;
-            return this;
-        }
-
-        /**
-         * Sets whether a watch ticket can currently be minted for this result.
-         *
-         * @param watchTicketEligible {@code true} if a watch ticket can currently be minted
-         * @return this builder
-         */
-        public Builder watchTicketEligible(boolean watchTicketEligible) {
-            this.watchTicketEligible = watchTicketEligible;
-            return this;
-        }
-
-        /**
-         * Builds the immutable result, applying all field validation.
-         *
-         * @return a new {@link FinalizeResult}
-         * @throws IllegalArgumentException if a required field is blank, an identifier or URL field is too
-         *                                   long or contains a control character, or {@code processingState}
-         *                                   is {@code null}
-         */
         public FinalizeResult build() {
+            ReplayState resolvedState = state == null
+                    ? ReplayState.fromProcessingState(processingState) : state;
             return new FinalizeResult(operationId, collectionId, assetId, processingState,
-                    failureCode, retryable, playableAt, resourceUrl, watchUrl, watchTicketEligible);
+                    failureCode, retryable, playableAt, resourceUrl, watchUrl,
+                    watchTicketEligible, localCollectionId, cloudCollectionId,
+                    integrationKey, externalRecordingId, resolvedState);
         }
     }
 }

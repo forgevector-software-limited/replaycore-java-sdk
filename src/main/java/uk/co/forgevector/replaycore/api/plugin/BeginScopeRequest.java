@@ -80,6 +80,8 @@ public final class BeginScopeRequest {
     private final Integer bestOf;
     private final String partyEventId;
     private final Map<String, String> metadata;
+    private final String externalRecordingIntegrationKey;
+    private final String externalRecordingId;
 
     private BeginScopeRequest(Builder b) {
         this.idempotencyKey = requiredIdentifier(b.idempotencyKey, "idempotencyKey", MAX_ID_LENGTH);
@@ -99,6 +101,14 @@ public final class BeginScopeRequest {
         this.bestOf = positiveOrNull(b.bestOf, "bestOf");
         this.partyEventId = nullableBounded(b.partyEventId);
         this.metadata = sanitiseMetadata(b.metadata);
+        this.externalRecordingIntegrationKey = optionalIdentifier(
+                b.externalRecordingIntegrationKey, "externalRecordingIntegrationKey", 64);
+        this.externalRecordingId = optionalIdentifier(
+                b.externalRecordingId, "externalRecordingId", 128);
+        if ((externalRecordingIntegrationKey == null) != (externalRecordingId == null)) {
+            throw new IllegalArgumentException(
+                    "external recording integration key and recording id must be supplied together");
+        }
     }
 
     /**
@@ -154,6 +164,10 @@ public final class BeginScopeRequest {
     public String partyEventId() { return partyEventId; }
     /** @return the sanitised, unmodifiable metadata map; never {@code null}, possibly empty */
     public Map<String, String> metadata() { return metadata; }
+    /** Correlation integration key used only by the external-recording result surface, or null. */
+    public String externalRecordingIntegrationKey() { return externalRecordingIntegrationKey; }
+    /** Correlation recording id used only by the external-recording result surface, or null. */
+    public String externalRecordingId() { return externalRecordingId; }
 
     // Rejected, not truncated: see the class documentation for why identifiers fail closed here.
     private static String requiredIdentifier(String value, String name, int maxLength) {
@@ -173,6 +187,10 @@ public final class BeginScopeRequest {
             }
         }
         return trimmed;
+    }
+
+    private static String optionalIdentifier(String value, String name, int maxLength) {
+        return value == null ? null : requiredIdentifier(value, name, maxLength);
     }
 
     private static String required(String value, String name) {
@@ -300,6 +318,8 @@ public final class BeginScopeRequest {
         private Integer bestOf;
         private String partyEventId;
         private Map<String, String> metadata;
+        private String externalRecordingIntegrationKey;
+        private String externalRecordingId;
 
         private Builder(String idempotencyKey, String externalMatchId, String category, String mode,
                          String policyId) {
@@ -416,6 +436,17 @@ public final class BeginScopeRequest {
                 }
                 this.metadata.putAll(metadata);
             }
+            return this;
+        }
+
+        /**
+         * Attaches the durable external-recording natural key to this scope. Ordinary match integrations
+         * should not call this; {@link ReplayCoreExternalSubjectApi#openScope(String, String,
+         * ReplayScopeOptions)} supplies it automatically.
+         */
+        public Builder externalRecording(String integrationKey, String externalRecordingId) {
+            this.externalRecordingIntegrationKey = integrationKey;
+            this.externalRecordingId = externalRecordingId;
             return this;
         }
 

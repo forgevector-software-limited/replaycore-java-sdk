@@ -25,12 +25,12 @@ a Bukkit, Spigot, Paper or Folia plugin.
 Releases are distributed through [JitPack](https://jitpack.io). Add the JitPack
 repository, then the dependency.
 
-The latest tagged release is `v1.4.1`, which reports SDK version `1.4.1` and
+The latest tagged release is `v1.5.0`, which reports SDK version `1.5.0` and
 tracks the matching ReplayCore product release. Use a tagged release for
 production rather than a mutable branch build.
 
 Some earlier product documentation named a `v1.1.5` coordinate. That tag was
-never published, so a build depending on it cannot resolve. Move to `v1.4.1`.
+never published, so a build depending on it cannot resolve. Move to `v1.5.0`.
 
 **Gradle**
 
@@ -40,7 +40,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.4.1'
+    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.5.0'
 }
 ```
 
@@ -57,7 +57,7 @@ dependencies {
 <dependency>
     <groupId>com.github.forgevector-software-limited</groupId>
     <artifactId>replaycore-java-sdk</artifactId>
-    <version>v1.4.1</version>
+    <version>v1.5.0</version>
 </dependency>
 ```
 
@@ -220,6 +220,48 @@ api.matches().ifPresent(matches -> matches.beginScope(
 ```
 
 Full worked example, including ending the scope and reading the outcome, in
+[`docs/plugin-extensions.md`](docs/plugin-extensions.md).
+
+### Record externally managed player-shaped subjects
+
+The optional `externalSubjects()` surface records bots, NPCs and other
+integration-owned player-shaped actors without requiring a Bukkit `Player`.
+An external recording is a logical scope over ReplayCore's continuous recorder,
+so several matches can run concurrently without starting, stopping or rotating
+the physical recording.
+
+```java
+ReplayCoreExternalSubjectApi external = api.externalSubjects()
+        .orElseThrow(() -> new IllegalStateException("External subjects unavailable"));
+
+ReplayScope scope = external.openScope(
+        "practice-engine",
+        matchId,
+        ReplayScopeOptions.builder("post-match")
+                .category("practice")
+                .mode("ranked-duel")
+                .build());
+
+SubjectTransform spawn = SubjectTransform
+        .builder(worldId, 12.5D, 64.0D, -8.0D)
+        .rotation(90.0F, 0.0F)
+        .onGround(true)
+        .build();
+
+ExternalSubjectHandle bot = external.registerExternalSubject(
+        scope,
+        ExternalSubjectDescriptor.playerShaped(botId, "PracticeBot", skin, spawn));
+
+ExternalSubjectPublishResult accepted = external.publishExternalSubjectFrame(
+        bot, ExternalSubjectFrame.builder(replayTick, spawn).build());
+```
+
+Publication is bounded and non-blocking. Check every
+`ExternalSubjectPublishResult`: `ACCEPTED` is durable at the recorder boundary,
+while `BACKPRESSURE` tells the integration to slow down without silently losing
+an accepted frame. The same API provides events, equipment, effects,
+presentation changes, despawn/respawn, idempotent scope finalisation and durable
+terminal result lookup. See
 [`docs/plugin-extensions.md`](docs/plugin-extensions.md).
 
 ## Documentation
