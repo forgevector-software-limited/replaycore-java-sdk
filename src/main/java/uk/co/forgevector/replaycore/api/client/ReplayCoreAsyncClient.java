@@ -11,10 +11,13 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 
 import uk.co.forgevector.replaycore.api.exception.ReplayCoreException;
+import uk.co.forgevector.replaycore.api.model.ApiResponse;
 import uk.co.forgevector.replaycore.api.model.ReplayMetadata;
 import uk.co.forgevector.replaycore.api.model.ReplayPage;
 import uk.co.forgevector.replaycore.api.model.ReplayQuery;
 import uk.co.forgevector.replaycore.api.model.ServerInstance;
+import uk.co.forgevector.replaycore.api.model.ServerSetup;
+import uk.co.forgevector.replaycore.api.model.ServerSetupRequest;
 import uk.co.forgevector.replaycore.api.model.TimelineEventRequest;
 import uk.co.forgevector.replaycore.api.model.TimelineMarker;
 
@@ -118,6 +121,136 @@ public final class ReplayCoreAsyncClient {
             @Override
             public List<ServerInstance> get() throws ReplayCoreException {
                 return delegate.listServers();
+            }
+        });
+    }
+
+    /**
+     * Asynchronously creates a pending server setup.
+     *
+     * @param request the server name and optional placement/template
+     * @return a future that completes with the pending setup
+     */
+    public CompletableFuture<ServerSetup> createServer(final ServerSetupRequest request) {
+        return supply(new ThrowingSupplier<ServerSetup>() {
+            @Override
+            public ServerSetup get() throws ReplayCoreException {
+                return delegate.createServer(request);
+            }
+        });
+    }
+
+    /**
+     * Asynchronously renames a connected server.
+     *
+     * @param serverId the connected server UUID
+     * @param name the new display name
+     * @return a future that completes with the updated server
+     */
+    public CompletableFuture<ServerInstance> renameServer(final String serverId, final String name) {
+        return supply(new ThrowingSupplier<ServerInstance>() {
+            @Override
+            public ServerInstance get() throws ReplayCoreException {
+                return delegate.renameServer(serverId, name);
+            }
+        });
+    }
+
+    /**
+     * Asynchronously deauthorises a connected server.
+     *
+     * @param serverId the connected server UUID
+     * @return a future that completes when the server is deauthorised
+     */
+    public CompletableFuture<Void> deauthoriseServer(final String serverId) {
+        return supply(new ThrowingSupplier<Void>() {
+            @Override
+            public Void get() throws ReplayCoreException {
+                delegate.deauthoriseServer(serverId);
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Asynchronously permanently removes a connected server.
+     *
+     * @param serverId the connected server UUID
+     * @return a future that completes when the server is removed
+     */
+    public CompletableFuture<Void> permanentlyRemoveServer(final String serverId) {
+        return supply(new ThrowingSupplier<Void>() {
+            @Override
+            public Void get() throws ReplayCoreException {
+                delegate.permanentlyRemoveServer(serverId);
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Asynchronously cancels a pending server setup.
+     *
+     * @param serverId the pending server id
+     * @return a future that completes when the pending setup is cancelled
+     */
+    public CompletableFuture<Void> cancelServerSetup(final String serverId) {
+        return supply(new ThrowingSupplier<Void>() {
+            @Override
+            public Void get() throws ReplayCoreException {
+                delegate.cancelServerSetup(serverId);
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Asynchronously reads one workspace setup resource.
+     *
+     * @param path the setup path without {@code /v1/api/setup/}
+     * @return a future that completes with the successful JSON response
+     */
+    public CompletableFuture<ApiResponse> getSetup(final String path) {
+        return supply(new ThrowingSupplier<ApiResponse>() {
+            @Override
+            public ApiResponse get() throws ReplayCoreException {
+                return delegate.getSetup(path);
+            }
+        });
+    }
+
+    /**
+     * Asynchronously calls one workspace setup resource.
+     *
+     * @param method {@code GET}, {@code POST}, {@code PUT}, {@code PATCH}, or {@code DELETE}
+     * @param path the setup path without {@code /v1/api/setup/}
+     * @param jsonBody a JSON-compatible tree, or {@code null} for no body
+     * @return a future that completes with the successful JSON response
+     */
+    public CompletableFuture<ApiResponse> requestSetup(
+            final String method, final String path, final Object jsonBody) {
+        return supply(new ThrowingSupplier<ApiResponse>() {
+            @Override
+            public ApiResponse get() throws ReplayCoreException {
+                return delegate.requestSetup(method, path, jsonBody);
+            }
+        });
+    }
+
+    /**
+     * Asynchronously calls any JSON endpoint on the configured ReplayCore origin.
+     *
+     * @param method {@code GET}, {@code POST}, {@code PUT}, {@code PATCH}, or {@code DELETE}
+     * @param path an absolute API path beginning with {@code /v1/}
+     * @param jsonBody a JSON-compatible tree, or {@code null} for no body
+     * @return a future that completes with the successful JSON response
+     */
+    public CompletableFuture<ApiResponse> requestJson(
+            final String method, final String path, final Object jsonBody) {
+        return supply(new ThrowingSupplier<ApiResponse>() {
+            @Override
+            public ApiResponse get() throws ReplayCoreException {
+                return delegate.requestJson(method, path, jsonBody);
             }
         });
     }

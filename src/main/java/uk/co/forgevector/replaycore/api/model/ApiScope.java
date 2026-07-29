@@ -13,9 +13,9 @@ package uk.co.forgevector.replaycore.api.model;
  * {@link uk.co.forgevector.replaycore.api.exception.AuthorizationException}, the
  * remedy is to issue a key with the missing scope.
  *
- * <p>{@link #REPLAYS_READ}, {@link #REPLAYS_WRITE} and {@link #SERVERS_READ}
- * are consumed by the current public API. {@link #ANALYTICS_READ} is reserved
- * for future public analytics endpoints.
+ * <p>Management scopes are checked together with the key creator's current
+ * workspace permissions. The SDK cannot bypass or replace server-side access
+ * control.
  */
 public enum ApiScope {
 
@@ -28,12 +28,47 @@ public enum ApiScope {
     /** Read connected-server metadata. Wire value {@code "servers:read"}. */
     SERVERS_READ("servers:read"),
 
-    /**
-     * Read aggregate analytics. Wire value {@code "analytics:read"}.
-     *
-     * <p>Reserved: no key-authed endpoint consumes this scope yet.
-     */
-    ANALYTICS_READ("analytics:read");
+    /** Create, rename and remove server setups. */
+    SERVERS_WRITE("servers:write"),
+
+    /** Inspect allowlisted workspace setup resources. */
+    SETUP_READ("setup:read"),
+
+    /** Change allowlisted workspace setup resources. Owner-only to grant. */
+    SETUP_WRITE("setup:write"),
+
+    /** Read aggregate analytics. */
+    ANALYTICS_READ("analytics:read"),
+
+    /** Read Network Portal configuration and media metadata. */
+    PORTALS_READ("portals:read"),
+
+    /** Manage Network Portal revisions and media. */
+    PORTALS_WRITE("portals:write"),
+
+    /** Drive recording lifecycle operations. */
+    RECORDINGS_WRITE("recordings:write"),
+
+    /** Create and update replay collections. */
+    COLLECTIONS_WRITE("collections:write"),
+
+    /** Create and finalise replay assets. */
+    CLIPS_WRITE("clips:write"),
+
+    /** Read collections, assets and player replay history. */
+    CATALOG_READ("catalog:read"),
+
+    /** Hold, release and revoke embargoed collections. */
+    RELEASE_WRITE("release:write"),
+
+    /** Issue replay-asset watch tickets and links. */
+    PLAYBACK_ISSUE("playback:issue"),
+
+    /** View held content when the governing release policy permits it. */
+    STAFF_BYPASS("staff:bypass"),
+
+    /** Administrative actions with no narrower capability. */
+    ADMIN("admin");
 
     private final String wireValue;
 

@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -27,12 +29,15 @@ import uk.co.forgevector.replaycore.api.exception.ReplayCoreApiException;
 import uk.co.forgevector.replaycore.api.exception.ReplayCoreException;
 import uk.co.forgevector.replaycore.api.exception.ReplayCoreTransportException;
 import uk.co.forgevector.replaycore.api.internal.HttpRequest;
+import uk.co.forgevector.replaycore.api.model.ApiResponse;
 import uk.co.forgevector.replaycore.api.model.Quality;
 import uk.co.forgevector.replaycore.api.model.ReplayMetadata;
 import uk.co.forgevector.replaycore.api.model.ReplayPage;
 import uk.co.forgevector.replaycore.api.model.ReplayQuery;
 import uk.co.forgevector.replaycore.api.model.ServerInstance;
 import uk.co.forgevector.replaycore.api.model.ServerStatus;
+import uk.co.forgevector.replaycore.api.model.ServerSetup;
+import uk.co.forgevector.replaycore.api.model.ServerSetupRequest;
 import uk.co.forgevector.replaycore.api.model.TimelineEventRequest;
 import uk.co.forgevector.replaycore.api.model.TimelineMarker;
 import uk.co.forgevector.replaycore.api.model.Visibility;
@@ -205,6 +210,89 @@ class ReplayCoreClientTest {
                 () -> clientWith(transport).listServers());
 
         assertTrue(failure.getCause() instanceof uk.co.forgevector.replaycore.api.internal.JsonParseException);
+    }
+
+    @Test
+    void createsRenamesAndRemovesServerSetups() throws ReplayCoreException {
+        RecordingTransport transport = new RecordingTransport()
+                .enqueue(201, "{\"serverId\":\"11111111-1111-4111-8111-111111111111\","
+                        + "\"name\":\"BedWars EU\"}")
+                .enqueue(200, "{\"id\":\"11111111-1111-4111-8111-111111111111\","
+                        + "\"name\":\"BedWars EU 1\",\"status\":\"offline\",\"replayCount\":0}")
+                .enqueue(204, "");
+        ReplayCoreClient client = clientWith(transport);
+
+        ServerSetup created = client.createServer(ServerSetupRequest.builder("BedWars EU")
+                .categoryId("22222222-2222-4222-8222-222222222222")
+                .sourceServerId("33333333-3333-4333-8333-333333333333")
+                .build());
+        assertEquals("11111111-1111-4111-8111-111111111111", created.getServerId());
+        assertTrue(transport.lastRequest().getBody()
+                .contains("\"categoryId\":\"22222222-2222-4222-8222-222222222222\""));
+
+        ServerInstance renamed = client.renameServer(created.getServerId(), "BedWars EU 1");
+        assertEquals("BedWars EU 1", renamed.getName());
+        assertEquals("PATCH", transport.lastRequest().getMethod());
+
+        client.permanentlyRemoveServer(created.getServerId());
+        assertEquals("DELETE", transport.lastRequest().getMethod());
+        assertEquals(BASE + "/v1/api/servers/permanent/" + created.getServerId(),
+                transport.lastRequest().getUrl());
+    }
+
+    @Test
+    void setupCallsReturnAnImmutableFutureProofJsonTree() throws ReplayCoreException {
+        RecordingTransport transport = new RecordingTransport()
+                .enqueue(200, "{\"messages\":{\"recording-started\":\"Recording started\"},"
+                        + "\"enabled\":true}")
+                .enqueue(200, "{\"enabled\":false}");
+        ReplayCoreClient client = clientWith(transport);
+
+        ApiResponse read = client.getSetup("plugin-config/scopes/tenant/default");
+        assertEquals(200, read.getStatusCode());
+        assertTrue(read.getObject().isPresent());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> messages =
+                (Map<String, Object>) read.getObject().get().get("messages");
+        assertEquals("Recording started", messages.get("recording-started"));
+        assertThrows(UnsupportedOperationException.class,
+                () -> messages.put("recording-started", "changed"));
+        assertEquals(BASE + "/v1/api/setup/plugin-config/scopes/tenant/default",
+                transport.lastRequest().getUrl());
+
+        Map<String, Object> update = new LinkedHashMap<String, Object>();
+        update.put("enabled", false);
+        ApiResponse written = client.requestSetup("PUT", "capture-settings", update);
+        assertEquals(Boolean.FALSE, written.getObject().get().get("enabled"));
+        assertEquals("{\"enabled\":false}", transport.lastRequest().getBody());
+    }
+
+    @Test
+    void genericJsonCallIsOriginBoundAndSupportsNoContent() throws ReplayCoreException {
+        RecordingTransport transport = new RecordingTransport().enqueue(204, "");
+        ReplayCoreClient client = clientWith(transport);
+
+        ApiResponse response = client.requestJson(
+                "DELETE", "/v1/api/setup/replay-categories/abc", null);
+        assertEquals(204, response.getStatusCode());
+        assertFalse(response.hasBody());
+        assertFalse(response.toJson().isPresent());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> client.requestJson("GET", "https://evil.example/v1/replays", null));
+        assertThrows(IllegalArgumentException.class,
+                () -> client.requestSetup("GET", "../api-keys", null));
+    }
+
+    @Test
+    void asyncClientCoversSetupOperations() throws Exception {
+        RecordingTransport transport = new RecordingTransport()
+                .enqueue(200, "{\"basePath\":\"/v1/api/setup\"}");
+        ReplayCoreAsyncClient async = new ReplayCoreAsyncClient(clientWith(transport));
+
+        ApiResponse response = async.getSetup("capabilities").get();
+
+        assertEquals("/v1/api/setup", response.getObject().get().get("basePath"));
     }
 
     @Test
