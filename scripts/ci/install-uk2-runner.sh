@@ -4,7 +4,9 @@
 set -euo pipefail
 
 REG_TOKEN="${REG_TOKEN:-}"
-RUNNER_NAME="${RUNNER_NAME:-uk2-replaycore-java-sdk-1}"
+# Do not read RUNNER_NAME from the environment: a job running on uk2-ci
+# inherits GitHub's RUNNER_NAME (uk2-replaycore-1) and would collide.
+RUNNER_NAME="uk2-replaycore-java-sdk-1"
 LABELS="${LABELS:-linux,x64,replaycore-java-sdk}"
 REPO_URL="${REPO_URL:-https://github.com/forgevector-software-limited/replaycore-java-sdk}"
 RUNNER_DIR="${RUNNER_DIR:-$HOME/actions-runner-java-sdk}"
