@@ -20,7 +20,7 @@ concurrency:
 jobs:
   analyse:
     name: Analyse Java
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, replaycore-java-sdk]
     timeout-minutes: 25
 
     steps:

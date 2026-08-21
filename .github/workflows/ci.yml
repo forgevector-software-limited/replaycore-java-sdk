@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     name: Build and verify
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, replaycore-java-sdk]
     timeout-minutes: 20
 
     steps:
@@ -70,6 +70,29 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
+
+      - name: Install checksum-pinned Maven
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v mvn >/dev/null 2>&1; then
+            mvn -version
+            exit 0
+          fi
+          version='3.9.16'
+          sha512='831A8591FE20C8243B1DBE7D71E3244F31D1665B0804B2E825E38CBBE5CE0CAFB8338851F90780735568773E0A6CD07BBEC107CDA0B896B008B861075358B6F6'
+          tools="${RUNNER_TEMP}/apache-maven-${version}"
+          archive="${RUNNER_TEMP}/apache-maven-${version}-bin.tar.gz"
+          if [[ ! -x "${tools}/bin/mvn" ]]; then
+            curl --fail --location --silent --show-error --retry 5 \
+              --output "$archive" \
+              "https://archive.apache.org/dist/maven/maven-3/${version}/binaries/apache-maven-${version}-bin.tar.gz"
+            printf '%s  %s\n' "$sha512" "$archive" | sha512sum --check --strict
+            mkdir -p "$RUNNER_TEMP"
+            tar -xzf "$archive" -C "$RUNNER_TEMP"
+          fi
+          echo "MAVEN_HOME=${tools}" >> "$GITHUB_ENV"
+          echo "${tools}/bin" >> "$GITHUB_PATH"
 
       - name: Build with Maven
         run: mvn --batch-mode --no-transfer-progress clean verify
