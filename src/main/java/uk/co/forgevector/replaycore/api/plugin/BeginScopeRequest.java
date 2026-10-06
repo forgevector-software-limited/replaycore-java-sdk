@@ -63,6 +63,7 @@ public final class BeginScopeRequest {
     /** Maximum number of {@link #metadata()} entries retained; extra entries are dropped. */
     public static final int MAX_METADATA_ENTRIES = 16;
 
+    private final GameplayBoundaryWitness boundaryWitness;
     private final String idempotencyKey;
     private final String externalMatchId;
     private final String category;
@@ -84,6 +85,7 @@ public final class BeginScopeRequest {
     private final String externalRecordingId;
 
     private BeginScopeRequest(Builder b) {
+        this.boundaryWitness = b.boundaryWitness;
         this.idempotencyKey = requiredIdentifier(b.idempotencyKey, "idempotencyKey", MAX_ID_LENGTH);
         this.externalMatchId = requiredIdentifier(b.externalMatchId, "externalMatchId", MAX_ID_LENGTH);
         this.category = foldedField(required(b.category, "category"));
@@ -131,6 +133,7 @@ public final class BeginScopeRequest {
     }
 
     /** @return the caller-provided idempotency key; never {@code null} */
+    public GameplayBoundaryWitness boundaryWitness() { return boundaryWitness; }
     public String idempotencyKey() { return idempotencyKey; }
     /** @return the external match id; never {@code null} */
     public String externalMatchId() { return externalMatchId; }
@@ -301,6 +304,8 @@ public final class BeginScopeRequest {
      * A fluent builder for {@link BeginScopeRequest}. Not thread-safe; build one request per builder.
      */
     public static final class Builder {
+        private GameplayBoundaryWitness boundaryWitness;
+        public Builder boundaryWitness(GameplayBoundaryWitness value) { this.boundaryWitness=value; return this; }
         private final String idempotencyKey;
         private final String externalMatchId;
         private final String category;

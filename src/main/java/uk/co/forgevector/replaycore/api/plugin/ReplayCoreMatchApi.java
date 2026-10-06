@@ -76,6 +76,37 @@ import java.util.concurrent.CompletionStage;
  * outcome on a repeated call with the same key, rather than doing the work twice.
  */
 public interface ReplayCoreMatchApi {
+    /** Capture before deferring a gameplay callback. Unavailable positions must not use delayed current time. */
+    default ScopeEventPositionWitness captureEventPosition(String scopeId) {
+        return ScopeEventPositionWitness.unavailable("UNSUPPORTED");
+    }
+    /** Capture a phase-start marker before the eventual scope id exists; binds only to the same admitted START. */
+    default ScopeEventPositionWitness captureEventPosition(GameplayBoundaryWitness issuedStart) {
+        return ScopeEventPositionWitness.unavailable("UNSUPPORTED");
+    }
+    /** Release after all marker/clip submissions for this callback; idempotent on the issuing recorder. */
+    /** Captures a later callback while BEGIN is pending; adoption requires the same admitted START identity. */
+    default ScopeEventPositionWitness capturePendingScopeEventPosition(GameplayBoundaryWitness issuedStart) {
+        return ScopeEventPositionWitness.unavailable("UNSUPPORTED");
+    }
+    default void releaseEventPosition(ScopeEventPositionWitness witness) { }
+    default CompletionStage<Void> tagScopeEvent(String scopeId,IntegrationBookmark bookmark,ScopeEventPositionWitness witness) {
+        java.util.concurrent.CompletableFuture<Void> result=new java.util.concurrent.CompletableFuture<>();
+        result.completeExceptionally(new UnsupportedOperationException("EVENT_POSITION_UNSUPPORTED"));return result;
+    }
+    default CompletionStage<Void> recordScopeClip(String scopeId,ScopeClipRequest request,ScopeEventPositionWitness witness) {
+        java.util.concurrent.CompletableFuture<Void> result=new java.util.concurrent.CompletableFuture<>();
+        result.completeExceptionally(new UnsupportedOperationException("EVENT_POSITION_UNSUPPORTED"));return result;
+    }
+
+    /** Nonblocking owner-thread cursor capture before any asynchronous persistence or admission.
+     * Old providers explicitly remain unsupported; callers must not infer complete gameplay coverage.
+     */
+    default GameplayBoundaryWitness captureBoundary(String kind, String integrationKey,
+            String externalRecordingId) {
+        return GameplayBoundaryWitness.unavailable("UNSUPPORTED");
+    }
+
 
     /**
      * Opens a logical match scope over the server's current recording.

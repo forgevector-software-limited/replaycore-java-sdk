@@ -42,6 +42,8 @@ public final class ReplayCatalogQuery {
     public static final int MAX_CURSOR_LENGTH = 4096;
 
     private final AssetKind artifactKind;
+    private final String collectionId;
+    private final String externalMatchId;
     private final AssetRelationship viewerRelation;
     private final String category;
     private final String mode;
@@ -51,6 +53,8 @@ public final class ReplayCatalogQuery {
     private final String cursor;
 
     private ReplayCatalogQuery(Builder b) {
+        this.collectionId = b.collectionId;
+        this.externalMatchId = b.externalMatchId;
         this.artifactKind = b.artifactKind;
         this.viewerRelation = b.viewerRelation;
         this.category = b.category == null || b.category.trim().isEmpty() ? null : foldedField(b.category);
@@ -68,6 +72,8 @@ public final class ReplayCatalogQuery {
 
     /** @return the {@code asset_kind} facet, or {@code null} for no filter */
     public AssetKind artifactKind() { return artifactKind; }
+    public String collectionId() { return collectionId; }
+    public String externalMatchId() { return externalMatchId; }
     /** @return the {@code viewer_relation} facet, or {@code null} for no filter */
     public AssetRelationship viewerRelation() { return viewerRelation; }
     /** @return the extensible category facet, or {@code null} for no filter */
@@ -129,6 +135,21 @@ public final class ReplayCatalogQuery {
 
     /** A fluent builder for {@link ReplayCatalogQuery}. Not thread-safe; build one query per builder. */
     public static final class Builder {
+        private String collectionId;
+        private String externalMatchId;
+
+        /** Exact cloud collection identity. No local scope id is accepted. */
+        public Builder collectionId(String value) {
+            if (value != null && !value.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"))
+                throw new IllegalArgumentException("collectionId must be a UUID");
+            this.collectionId = value; return this;
+        }
+        /** Exact external match identity, mapped from externalRecordingId. */
+        public Builder externalMatchId(String value) {
+            if (value != null && (value.isEmpty() || value.length() > MAX_FIELD_LENGTH || !value.matches("[A-Za-z0-9_.:-]+")))
+                throw new IllegalArgumentException("externalMatchId must be a bounded exact identity");
+            this.externalMatchId = value; return this;
+        }
         private AssetKind artifactKind;
         private AssetRelationship viewerRelation;
         private String category;
