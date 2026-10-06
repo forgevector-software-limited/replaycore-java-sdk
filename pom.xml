@@ -10,7 +10,7 @@
 
     <groupId>uk.co.forgevector</groupId>
     <artifactId>replaycore-java-sdk</artifactId>
-    <version>1.6.0</version>
+    <version>1.5.17</version>
     <packaging>jar</packaging>
 
     <name>ReplayCore Java SDK</name>

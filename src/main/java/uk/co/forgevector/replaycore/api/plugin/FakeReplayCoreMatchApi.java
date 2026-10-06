@@ -86,6 +86,8 @@ public final class FakeReplayCoreMatchApi implements ReplayCoreMatchApi {
     private final AtomicLong scopeSequence = new AtomicLong();
     private final AtomicLong operationSequence = new AtomicLong();
     private volatile long currentTick;
+    private final java.util.IdentityHashMap<ScopeEventPositionWitness,Object> eventPositions=new java.util.IdentityHashMap<ScopeEventPositionWitness,Object>();
+    private final ConcurrentHashMap<String,GameplayBoundaryWitness> startsByScope=new ConcurrentHashMap<String,GameplayBoundaryWitness>();
 
     @Override
     public CompletionStage<ReplayScope> beginScope(BeginScopeRequest request) {
@@ -104,6 +106,7 @@ public final class FakeReplayCoreMatchApi implements ReplayCoreMatchApi {
             ReplayScope scope = new ReplayScope(scopeId, collectionId, request.externalMatchId(),
                     currentTick, ProcessingState.RECORDING);
             scopesById.put(scopeId, scope);
+            if(request.boundaryWitness()!=null)startsByScope.put(scopeId,request.boundaryWitness());
             scopeIdByBeginKey.put(request.idempotencyKey(), scopeId);
             return CompletableFuture.completedFuture(scope);
         }
@@ -185,6 +188,39 @@ public final class FakeReplayCoreMatchApi implements ReplayCoreMatchApi {
         Objects.requireNonNull(request, "request must not be null");
         scopeClipCalls.add(new RecordedScopeClip(scopeId, request));
         return acceptForOpenScope(scopeId);
+    }
+
+    /** Test fixture ownership is independent of recorder authority. */
+    @Override public GameplayBoundaryWitness captureBoundary(String kind,String integrationKey,String externalRecordingId) {
+        if(!"START".equals(kind) && !"END".equals(kind))return GameplayBoundaryWitness.unavailable("UNAVAILABLE");
+        return GameplayBoundaryWitness.captured(kind,"00000000-0000-4000-8000-000000000001",
+                "00000000-0000-4000-8000-000000000002","00000000-0000-4000-8000-000000000003",0,0,
+                currentTick,currentTick,0,integrationKey,externalRecordingId);
+    }
+    @Override public synchronized ScopeEventPositionWitness captureEventPosition(String scopeId) {
+        if(!scopesById.containsKey(scopeId) || endOperationsByScopeId.containsKey(scopeId))
+            return ScopeEventPositionWitness.unavailable("POSITION_UNAVAILABLE");
+        ScopeEventPositionWitness witness=ScopeEventPositionWitness.issued();eventPositions.put(witness,scopeId);return witness;
+    }
+    @Override public synchronized ScopeEventPositionWitness captureEventPosition(GameplayBoundaryWitness start) {
+        if(start==null || !"CAPTURED".equals(start.status()) || !"START".equals(start.kind()))
+            return ScopeEventPositionWitness.unavailable("POSITION_UNAVAILABLE");
+        ScopeEventPositionWitness witness=ScopeEventPositionWitness.issued();eventPositions.put(witness,start);return witness;
+    }
+    @Override public synchronized ScopeEventPositionWitness capturePendingScopeEventPosition(GameplayBoundaryWitness start) {
+        return captureEventPosition(start);
+    }
+    @Override public synchronized void releaseEventPosition(ScopeEventPositionWitness witness) {eventPositions.remove(witness);}
+    private synchronized boolean ownsPosition(String scopeId,ScopeEventPositionWitness witness) {
+        Object owner=eventPositions.get(witness);return scopeId.equals(owner) || (owner!=null && owner==startsByScope.get(scopeId));
+    }
+    @Override public CompletionStage<Void> tagScopeEvent(String scopeId,IntegrationBookmark bookmark,ScopeEventPositionWitness witness) {
+        if(!ownsPosition(scopeId,witness))return failedStage(new IllegalStateException("EVENT_POSITION_UNAVAILABLE"));
+        return tagScopeEvent(scopeId,bookmark);
+    }
+    @Override public CompletionStage<Void> recordScopeClip(String scopeId,ScopeClipRequest request,ScopeEventPositionWitness witness) {
+        if(!ownsPosition(scopeId,witness))return failedStage(new IllegalStateException("EVENT_POSITION_UNAVAILABLE"));
+        return recordScopeClip(scopeId,request);
     }
 
     private CompletionStage<Void> acceptForOpenScope(String scopeId) {

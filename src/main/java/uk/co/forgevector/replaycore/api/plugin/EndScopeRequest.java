@@ -43,6 +43,7 @@ public final class EndScopeRequest {
     /** Maximum number of {@link #metadata()} entries retained; extra entries are dropped. */
     public static final int MAX_METADATA_ENTRIES = 16;
 
+    private final GameplayBoundaryWitness boundaryWitness;
     private final String idempotencyKey;
     private final List<ReplayParticipant> participants;
     private final List<ReplayTeam> teams;
@@ -61,10 +62,19 @@ public final class EndScopeRequest {
      */
     public EndScopeRequest(String idempotencyKey, Collection<ReplayParticipant> participants,
                             Collection<ReplayTeam> teams, Map<String, String> metadata) {
+        this.boundaryWitness = null;
         this.idempotencyKey = requiredIdentifier(idempotencyKey, "idempotencyKey");
         this.participants = boundedParticipants(participants);
         this.teams = boundedTeams(teams);
         this.metadata = sanitiseMetadata(metadata);
+    }
+
+    private EndScopeRequest(Builder builder) {
+        this.idempotencyKey = requiredIdentifier(builder.idempotencyKey, "idempotencyKey");
+        this.participants = boundedParticipants(builder.participants);
+        this.teams = boundedTeams(builder.teams);
+        this.metadata = sanitiseMetadata(builder.metadata);
+        this.boundaryWitness = builder.boundaryWitness;
     }
 
     /**
@@ -79,6 +89,7 @@ public final class EndScopeRequest {
     }
 
     /** @return the idempotency key for this end-scope call; never {@code null} */
+    public GameplayBoundaryWitness boundaryWitness() { return boundaryWitness; }
     public String idempotencyKey() { return idempotencyKey; }
     /** @return the final participant outcomes; never {@code null}, possibly empty */
     public List<ReplayParticipant> participants() { return participants; }
@@ -160,6 +171,8 @@ public final class EndScopeRequest {
 
     /** A fluent builder for {@link EndScopeRequest}. Not thread-safe; build one request per builder. */
     public static final class Builder {
+        private GameplayBoundaryWitness boundaryWitness;
+        public Builder boundaryWitness(GameplayBoundaryWitness value) { this.boundaryWitness=value; return this; }
         private final String idempotencyKey;
         private Collection<ReplayParticipant> participants;
         private Collection<ReplayTeam> teams;
@@ -235,7 +248,7 @@ public final class EndScopeRequest {
          *                                   control character
          */
         public EndScopeRequest build() {
-            return new EndScopeRequest(idempotencyKey, participants, teams, metadata);
+            return new EndScopeRequest(this);
         }
     }
 }

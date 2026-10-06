@@ -59,13 +59,14 @@ tasks.named('jar') {
 tasks.register('verifyReleaseMetadata') {
     group = 'verification'
     description = 'Checks that public dependency examples and runtime metadata match the release version.'
-    inputs.files('pom.xml', 'README.md', 'docs/api-reference.md',
+    inputs.files('pom.xml', 'README.md', 'docs/api-reference.md', 'docs/plugin-extensions.md',
             'src/main/java/uk/co/forgevector/replaycore/api/client/ReplayCoreClientBuilder.java')
 
     doLast {
         String expected = project.version.toString()
         String readme = file('README.md').getText('UTF-8')
         String apiReference = file('docs/api-reference.md').getText('UTF-8')
+        String pluginExtensions = file('docs/plugin-extensions.md').getText('UTF-8')
         String builder = file('src/main/java/uk/co/forgevector/replaycore/api/client/ReplayCoreClientBuilder.java')
                 .getText('UTF-8')
 
@@ -83,6 +84,9 @@ tasks.register('verifyReleaseMetadata') {
         }
         if (!readme.contains("`${expected}`") || !apiReference.contains("`${expected}`")) {
             throw new GradleException("Public source documentation does not identify version ${expected}")
+        }
+        if (!pluginExtensions.contains("replaycore-java-sdk:v${expected}")) {
+            throw new GradleException("Plugin compile-only coordinate is not ${expected}")
         }
         if (!builder.contains("SDK_VERSION = \"${expected}\"")) {
             throw new GradleException("Runtime SDK version does not match pom.xml (${expected})")

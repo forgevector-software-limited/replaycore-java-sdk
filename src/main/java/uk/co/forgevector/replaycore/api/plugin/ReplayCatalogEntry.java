@@ -40,6 +40,10 @@ import java.util.Optional;
 public final class ReplayCatalogEntry {
 
     private final String assetId;
+    private final boolean authoritativeMatchComplete;
+    private final boolean gameplayBoundariesComplete;
+    private final Instant collectionEndedAt;
+    private final String externalMatchId;
     private final String collectionId;
     private final AssetKind kind;
     private final EventKind eventKind;
@@ -57,6 +61,10 @@ public final class ReplayCatalogEntry {
     private final List<AssetParticipant> participants;
 
     private ReplayCatalogEntry(Builder b) {
+        this.authoritativeMatchComplete = b.authoritativeMatchComplete;
+        this.gameplayBoundariesComplete = b.gameplayBoundariesComplete;
+        this.collectionEndedAt = b.collectionEndedAt;
+        this.externalMatchId = b.externalMatchId;
         this.assetId = requiredIdentifier(b.assetId, "assetId");
         this.collectionId = requiredIdentifier(b.collectionId, "collectionId");
         this.kind = Objects.requireNonNull(b.kind, "kind must not be null");
@@ -89,6 +97,15 @@ public final class ReplayCatalogEntry {
 
     /** @return the asset's id; never {@code null} */
     public String assetId() { return assetId; }
+    /** Authoritative logical match end, never physical archive rotation. */
+    /** True only for authoritative end and exact, complete validated coverage. */
+    public boolean authoritativeMatchComplete() { return authoritativeMatchComplete; }
+    /** Recorder-issued gameplay endpoints reconciled with the exact archived segment chain.
+     * Missing proof and older cloud responses return false. This does not certify server truth. */
+    public boolean gameplayBoundariesComplete() { return gameplayBoundariesComplete; }
+    public Optional<Instant> collectionEndedAt() { return Optional.ofNullable(collectionEndedAt); }
+    /** Immutable cloud collection external identity; maps to externalRecordingId. */
+    public Optional<String> externalMatchId() { return Optional.ofNullable(externalMatchId); }
     /** @return the id of the collection this asset belongs to; never {@code null} */
     public String collectionId() { return collectionId; }
     /** @return what kind of asset this is; never {@code null} */
@@ -113,8 +130,10 @@ public final class ReplayCatalogEntry {
     public Optional<Long> durationTicks() { return Optional.ofNullable(durationTicks); }
     /** @return a coarse display hint for whether a thumbnail is ready; never itself a playback grant */
     public boolean thumbnailReady() { return thumbnailReady; }
-    /** @return a coarse display hint for whether this asset looks playable; the authoritative check is
-     *          still {@link ReplayCatalogApi#createWatchTicket} */
+    /** @return whether this asset is media-ready (closed, committed archives; not merely
+     *          {@code processing_state=ready}). The previous coarse hint treated ready as playable and
+     *          advertised dead watches. The authoritative authorisation check is still
+     *          {@link ReplayCatalogApi#createWatchTicket} */
     public boolean playbackEligible() { return playbackEligible; }
     /** @return whether retention has expired this asset before it could be watched */
     public boolean expired() { return expired; }
@@ -185,6 +204,14 @@ public final class ReplayCatalogEntry {
 
     /** A fluent builder for {@link ReplayCatalogEntry}. Not thread-safe; build one entry per builder. */
     public static final class Builder {
+        private boolean authoritativeMatchComplete;
+        private boolean gameplayBoundariesComplete;
+        public Builder gameplayBoundariesComplete(boolean value) { this.gameplayBoundariesComplete = value; return this; }
+        public Builder authoritativeMatchComplete(boolean value) { this.authoritativeMatchComplete = value; return this; }
+        private Instant collectionEndedAt;
+        private String externalMatchId;
+        public Builder collectionEndedAt(Instant value) { this.collectionEndedAt = value; return this; }
+        public Builder externalMatchId(String value) { this.externalMatchId = value; return this; }
         private final String assetId;
         private final String collectionId;
         private final AssetKind kind;
@@ -308,9 +335,10 @@ public final class ReplayCatalogEntry {
         }
 
         /**
-         * Sets the playback-eligibility display hint.
+         * Sets whether this asset is media-ready. This is not {@code processing_state=ready}:
+         * a ready FULL_MATCH with no playable archives is {@code false}.
          *
-         * @param playbackEligible {@code true} if this asset looks playable
+         * @param playbackEligible {@code true} if the cloud's media-ready predicate accepts this asset
          * @return this builder
          */
         public Builder playbackEligible(boolean playbackEligible) {

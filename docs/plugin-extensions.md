@@ -18,7 +18,7 @@ running ReplayCore plugin supplies these classes:
 
 ```groovy
 dependencies {
-    compileOnly 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.6.0'
+    compileOnly 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.5.17'
 }
 ```
 
