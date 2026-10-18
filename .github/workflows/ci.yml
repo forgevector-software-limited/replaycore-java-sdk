@@ -16,15 +16,31 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Build and verify
-    runs-on: [self-hosted, linux, x64, replaycore-java-sdk]
+    runs-on: [self-hosted, replaycore, miami-ci]
     timeout-minutes: 20
+    env:
+      HOME: /srv/replaycore-miami/rc-miami-ci/repository-homes/sdk
+      TMPDIR: /srv/replaycore-miami/rc-miami-ci/repository-homes/sdk/tmp
+      XDG_CACHE_HOME: /srv/replaycore-miami/rc-miami-ci/repository-homes/sdk/.cache
+      GRADLE_USER_HOME: /srv/replaycore-miami/rc-miami-ci/repository-homes/sdk/.gradle
+      NPM_CONFIG_CACHE: /srv/replaycore-miami/rc-miami-ci/repository-homes/sdk/.cache/npm
+      DOCKER_HOST: ""
+      DBUS_SESSION_BUS_ADDRESS: ""
 
     steps:
       - name: Check out source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+
+      - name: Verify the actual inherited organization job lease
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' '3cded8087083c67b23c2445b9f5de9279fc095d724cf1f60d5bcafd228063132  .github/scripts/verify-miami-repository-admission.py' | sha256sum --check --strict
+          /usr/bin/python3 -I .github/scripts/verify-miami-repository-admission.py
 
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
@@ -107,9 +123,9 @@ jobs:
           major="$(javap -verbose -classpath "$maven_jar" uk.co.forgevector.replaycore.api.client.ReplayCoreClient | awk '/major version:/ {print $3}')"
           test "$major" = "52"
           unzip -p "$maven_jar" META-INF/MANIFEST.MF | grep -Fqx "$(printf 'Implementation-Version: %s\r' "$SDK_VERSION")"
-          jar tf "$gradle_jar" | grep '\.class$' | LC_ALL=C sort > /tmp/gradle-classes.txt
-          jar tf "$maven_jar" | grep '\.class$' | LC_ALL=C sort > /tmp/maven-classes.txt
-          diff -u /tmp/gradle-classes.txt /tmp/maven-classes.txt
+          jar tf "$gradle_jar" | grep '\.class$' | LC_ALL=C sort > "${TMPDIR:?}/gradle-classes.txt"
+          jar tf "$maven_jar" | grep '\.class$' | LC_ALL=C sort > "${TMPDIR:?}/maven-classes.txt"
+          diff -u "${TMPDIR:?}/gradle-classes.txt" "${TMPDIR:?}/maven-classes.txt"
 
       - name: Check source headers
         shell: bash
