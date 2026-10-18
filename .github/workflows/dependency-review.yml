@@ -9,9 +9,18 @@ permissions:
 
 jobs:
   review:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Review dependency changes
-    runs-on: [self-hosted, linux, x64, replaycore-java-sdk]
+    runs-on: [self-hosted, replaycore, miami-ci]
     timeout-minutes: 10
+    env:
+      HOME: /srv/replaycore-miami/rc-miami-ci/repository-homes/sdk
+      TMPDIR: /srv/replaycore-miami/rc-miami-ci/repository-homes/sdk/tmp
+      XDG_CACHE_HOME: /srv/replaycore-miami/rc-miami-ci/repository-homes/sdk/.cache
+      GRADLE_USER_HOME: /srv/replaycore-miami/rc-miami-ci/repository-homes/sdk/.gradle
+      NPM_CONFIG_CACHE: /srv/replaycore-miami/rc-miami-ci/repository-homes/sdk/.cache/npm
+      DOCKER_HOST: ""
+      DBUS_SESSION_BUS_ADDRESS: ""
 
     steps:
       - name: Check out source
