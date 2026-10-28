@@ -34,11 +34,13 @@ def integer(value):
 
 
 def validate_native_limits(cpu, memory, swap):
-    values = cpu.split()
-    require(len(values) == 2 and all(x.isdigit() for x in values), 'native CPU quota missing')
-    quota, period = map(int, values)
-    require(period > 0 and quota == 2 * period, 'native CPU quota differs')
-    require(memory.strip() == '24000000000' and swap.strip() == '0', 'native memory or swap ceiling differs')
+    # The runner-slice profiles reviewed for the replaycore monorepo verifier: night 3.5 cores / 24 GB, day
+    # 10 cores / 56 GB (previous day profile) and day 14 cores / 56 GB. Swap is always 0.
+    profiles = {'350000 100000': '24000000000', '1000000 100000': '56000000000', '1400000 100000': '56000000000'}
+    require(len(cpu.split()) == 2 and all(x.isdigit() for x in cpu.split()), 'native CPU quota missing')
+    observed = ' '.join(cpu.split())
+    require(observed in profiles, 'native CPU quota differs (observed ' + observed + ')')
+    require(memory.strip() == profiles[observed] and swap.strip() == '0', 'native memory or swap ceiling differs')
 
 
 def parse_stat(raw):

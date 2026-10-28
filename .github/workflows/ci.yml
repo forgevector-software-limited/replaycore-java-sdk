@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s\n' '3cded8087083c67b23c2445b9f5de9279fc095d724cf1f60d5bcafd228063132  .github/scripts/verify-miami-repository-admission.py' | sha256sum --check --strict
+          printf '%s\n' 'f0e4aed0cef30408decb4de6255e63cc2a3b7d39512656f1c189564533300b0a  .github/scripts/verify-miami-repository-admission.py' | sha256sum --check --strict
           /usr/bin/python3 -I .github/scripts/verify-miami-repository-admission.py
 
       - name: Validate Gradle wrapper
