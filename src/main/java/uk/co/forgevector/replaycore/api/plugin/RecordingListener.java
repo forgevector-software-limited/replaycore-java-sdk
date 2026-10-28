@@ -11,9 +11,17 @@ package uk.co.forgevector.replaycore.api.plugin;
  * <p>Register an implementation with
  * {@link ReplayCoreApi#registerListener(RecordingListener)} and remove it with
  * {@link ReplayCoreApi#unregisterListener(RecordingListener)}. The recorder
- * invokes the callbacks on the server's main thread at the corresponding
- * session boundary, so implementations must return quickly and must not block;
- * offload any heavy or network work (for example a REST call) to another thread.
+ * invokes start and stop callbacks on the recorder lifecycle thread. Asset
+ * callbacks run on a finalisation worker. No callback establishes ownership of
+ * a Bukkit world or entity. On Folia, use the scheduler that owns the target
+ * region or entity before reading its live state; on Bukkit, schedule live
+ * platform access on the server thread. Use the supplied immutable snapshots
+ * for correlation. Callbacks must return quickly and must not block.
+ *
+ * <p>Keep the listener instance and unregister it when the addon disables.
+ * Set an addon-owned active flag to false before unregistering so a callback
+ * already present in a dispatch snapshot does not run addon work after unload.
+ * Cancel addon-owned scheduled work as part of the same teardown.
  *
  * <p>Callbacks are observational. They report what the recorder did; they cannot
  * veto or alter the recording. All methods are {@code default} no-ops so an addon

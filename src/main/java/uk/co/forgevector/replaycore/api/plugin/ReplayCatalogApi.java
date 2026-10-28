@@ -6,16 +6,18 @@
 package uk.co.forgevector.replaycore.api.plugin;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 /**
- * Programmatic surface for a network's own plugin to read the RFC-0009 replay catalogue and mint a
- * playback ticket, the in-process twin of the network-integration catalogue and watch-ticket routes
- * ({@code GET /v1/players/{uuid}/replays} and {@code POST /v1/replay-assets/{id}/watch-ticket} on the
- * Bearer developer API). A call through this interface is carried to the cloud over the recorder's own
- * HMAC-signed recording-key credential, against the recorder-lane mirror of those same two routes
- * ({@code /v1/recorder/players/{uuid}/replays}, {@code /v1/recorder/replay-assets/{id}/watch-ticket}), so
- * no separate {@code rc_live_} developer key is needed on the server for either call.
+ * Programmatic surface for a network's own plugin to read the RFC-0009 replay catalogue and mint playback
+ * access, the in-process twin of the network-integration catalogue, watch-ticket and watch-link routes
+ * ({@code GET /v1/players/{uuid}/replays}, {@code POST /v1/replay-assets/{id}/watch-ticket} and
+ * {@code POST /v1/replay-assets/{id}/watch-link} on the Bearer developer API). A call through this
+ * interface is carried to the cloud over the recorder's own HMAC-signed recording-key credential, against
+ * the recorder-lane mirror of those same routes ({@code /v1/recorder/players/{uuid}/replays},
+ * {@code /v1/recorder/replay-assets/{id}/watch-ticket}, {@code /v1/recorder/replay-assets/{id}/watch-link}),
+ * so no separate {@code rc_live_} developer key is needed on the server for any of them.
  *
  * <p>Obtain the instance from the running recorder, either through Bukkit's services manager or (once
  * wired) the umbrella {@link ReplayCoreApi}, and note that it is present only when this server has
@@ -51,13 +53,22 @@ import java.util.concurrent.CompletionStage;
  * playable bytes is a separate, viewer-side REST call ({@code POST /v1/replay-assets/{id}/watch-ticket/redeem})
  * outside this interface's scope - this method only ever performs the mint half of that exchange.
  *
+ * <p>{@link #createWatchLink} grants the other kind of access: a durable browser link to post in chat or
+ * on a website. It names no viewer and does not expire, and it stops working as soon as the asset is held,
+ * revoked or made private.
+ *
  * <h2>Reliability contract</h2>
- * <p>Both methods are safe to call from the server's main thread: neither blocks on cloud I/O, and neither
+ * <p>Every method is safe to call from the server's main thread: none blocks on cloud I/O, and none
  * throws for an ordinary operational condition, matching {@link ReplayCoreMatchApi}'s own contract. A
  * {@code null} argument is the one exception a call may throw synchronously for, since that is a
  * programmer error rather than a runtime condition; every other outcome, including cloud unavailability, an
  * unknown or unauthorized id, or a saturated background boundary, is delivered through the returned
- * {@link CompletionStage} completing exceptionally instead.
+ * {@link CompletionStage} completing exceptionally instead. A queued request also completes
+ * exceptionally if the recorder stops before sending it.
+ *
+ * <p>A stage can complete on a worker, the rejecting caller or the shutdown thread. Completion does not
+ * give access to a Bukkit world or entity. Schedule live platform access on the server thread, or on the
+ * owning Folia region/entity scheduler. Keep completion callbacks short and do not block.
  *
  * <p>Forward-looking contract: see the package documentation for status.
  */
@@ -95,4 +106,31 @@ public interface ReplayCatalogApi {
      *         so neither is ever reported differently from the other
      */
     CompletionStage<WatchTicketResult> createWatchTicket(WatchTicketRequest request);
+
+    /**
+     * Mints a durable browser watch link for one asset. Anyone holding the link can watch the asset for as
+     * long as it stays released and public or unlisted; the cloud re-checks that on every view, so a hold,
+     * revoke or visibility change takes effect immediately.
+     *
+     * <p>Watch links are available on paid plans. A clip may still be processing when its link is minted,
+     * in which case the watch page shows a preparing state until playback is ready; a full-match asset must
+     * already be ready.
+     *
+     * <p>The default implementation completes exceptionally with {@link UnsupportedOperationException}, so
+     * an existing implementation of this interface stays source and binary compatible. The recorder
+     * implements it from in-process API version {@code 1.3}.
+     *
+     * @param assetId the asset to link to; must not be {@code null}
+     * @return a stage that completes promptly with the minted {@link WatchLinkResult}; never blocks.
+     *         Completes exceptionally, never throws synchronously, for an ordinary operational condition
+     *         such as cloud unavailability, a free plan, or an asset that is unknown, not released, or not
+     *         public or unlisted. As with {@link #createWatchTicket}, an unknown asset and one the cloud
+     *         will not link are reported identically
+     */
+    default CompletionStage<WatchLinkResult> createWatchLink(String assetId) {
+        CompletableFuture<WatchLinkResult> unsupported = new CompletableFuture<WatchLinkResult>();
+        unsupported.completeExceptionally(new UnsupportedOperationException(
+                "this recorder does not mint watch links in process"));
+        return unsupported;
+    }
 }
