@@ -9,6 +9,8 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import uk.co.forgevector.replaycore.api.internal.Validation;
+
 /**
  * A typed, validated set of filters for {@code listReplays}.
  *
@@ -41,6 +43,7 @@ public final class ReplayQuery {
     private final Boolean starred;
     private final String playerUuid;
     private final String player;
+    private final String sessionId;
     private final Instant startedAfter;
     private final Instant startedBefore;
     private final Long durationMinMs;
@@ -56,6 +59,7 @@ public final class ReplayQuery {
         this.starred = b.starred;
         this.playerUuid = b.playerUuid;
         this.player = b.player;
+        this.sessionId = b.sessionId;
         this.startedAfter = b.startedAfter;
         this.startedBefore = b.startedBefore;
         this.durationMinMs = b.durationMinMs;
@@ -97,6 +101,9 @@ public final class ReplayQuery {
         }
         if (player != null) {
             params.put("player", player);
+        }
+        if (sessionId != null) {
+            params.put("session_id", sessionId);
         }
         if (startedAfter != null) {
             params.put("started_after", startedAfter.toString());
@@ -150,6 +157,7 @@ public final class ReplayQuery {
         private Boolean starred;
         private String playerUuid;
         private String player;
+        private String sessionId;
         private Instant startedAfter;
         private Instant startedBefore;
         private Long durationMinMs;
@@ -273,6 +281,21 @@ public final class ReplayQuery {
          */
         public Builder player(String player) {
             this.player = requireNonBlank(player, "player");
+            return this;
+        }
+
+        /**
+         * Restricts results to the replay that represents one recording session. For
+         * a segmented replay that is the session's entry; for any other replay it is
+         * the replay whose own id is the session id. It matches
+         * {@link ReplayMetadata#getSessionId()}.
+         *
+         * @param sessionId the recording session UUID
+         * @return this builder
+         * @throws IllegalArgumentException if blank or not a UUID
+         */
+        public Builder sessionId(String sessionId) {
+            this.sessionId = Validation.requireUuid(sessionId, "sessionId");
             return this;
         }
 

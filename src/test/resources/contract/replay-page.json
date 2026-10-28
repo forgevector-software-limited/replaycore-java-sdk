@@ -1,0 +1,45 @@
+{
+  "results": [
+    {
+      "id": "00000000-0000-4000-8000-0000000000b1",
+      "tenant_id": "7d2c1e4a-3b5f-4c6d-8e9f-0a1b2c3d4e5f",
+      "server_id": "11111111-1111-4111-8111-111111111111",
+      "server_name": "Lobby 1",
+      "display_name": "Finals",
+      "integration": "bedwars",
+      "quality": "high",
+      "started_at": "2026-10-28T12:00:00Z",
+      "ended_at": "2026-10-28T12:10:00Z",
+      "duration_ms": 600000,
+      "size_bytes": 1048576,
+      "storage_tier": "hot",
+      "retention_until": "2026-11-27T12:00:00Z",
+      "visibility": "unlisted",
+      "signature_kid": "kid-2026-10",
+      "manifest_hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "has_staff_archive": true,
+      "redacted_from": "00000000-0000-4000-8000-0000000000a1",
+      "archive_status": "crash-finalised",
+      "crash_finalised": true,
+      "starred": true,
+      "recovery_status": "crash-finalised",
+      "format_version": 1,
+      "participants": [
+        {
+          "uuid": "069a79f4-44e9-4726-a5be-fca90e38aaf5",
+          "name": "Notch",
+          "role": "player"
+        }
+      ],
+      "storage_mode": "segmented",
+      "session_id": "5e55105e-0000-4000-8000-000000000001",
+      "segment_seq": 0,
+      "session_duration_ms": 1800000,
+      "recording_session_id": "00000000-0000-4000-8000-0000000000b1",
+      "has_thumbnail": true,
+      "has_private_thumbnail": true
+    }
+  ],
+  "next_page_token": "eyJzIjoiMjAyNi0xMC0yOFQxMjowMDowMFoifQ",
+  "page_size": 20
+}

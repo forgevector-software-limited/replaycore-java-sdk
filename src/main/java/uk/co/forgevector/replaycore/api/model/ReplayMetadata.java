@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 /**
  * Immutable metadata describing a single recorded replay.
@@ -56,6 +57,11 @@ public final class ReplayMetadata {
     private final List<Participant> participants;
     private final String storageMode;
     private final String sessionId;
+    private final Integer segmentSeq;
+    private final Long sessionDurationMs;
+    private final String recordingSessionId;
+    private final boolean hasThumbnail;
+    private final boolean hasPrivateThumbnail;
 
     private ReplayMetadata(Builder b) {
         this.id = Objects.requireNonNull(b.id, "id");
@@ -86,6 +92,11 @@ public final class ReplayMetadata {
                 : Collections.<Participant>emptyList();
         this.storageMode = b.storageMode;
         this.sessionId = b.sessionId;
+        this.segmentSeq = b.segmentSeq;
+        this.sessionDurationMs = b.sessionDurationMs;
+        this.recordingSessionId = b.recordingSessionId;
+        this.hasThumbnail = b.hasThumbnail;
+        this.hasPrivateThumbnail = b.hasPrivateThumbnail;
     }
 
     /**
@@ -332,7 +343,8 @@ public final class ReplayMetadata {
     /**
      * Returns the storage layout. {@code "segmented"} indicates the
      * recording was rotated into a linked sequence of session segments; absent
-     * for an ordinary single-archive replay.
+     * for an ordinary single-archive replay. {@link #getSessionId()} is present
+     * either way.
      *
      * @return the storage mode, or an empty optional
      */
@@ -350,13 +362,71 @@ public final class ReplayMetadata {
     }
 
     /**
-     * Returns the stable session identifier shared by every segment of a
-     * segmented replay. Present only for segmented replays.
+     * Returns the recording session this replay belongs to. For a segmented
+     * replay it is the stable identifier shared by every segment of the session;
+     * for any other replay it is the replay's own id, because an unsegmented
+     * archive is a one-segment session. A response always carries it, so an empty
+     * optional means only that the server omitted it. Use {@link #isSegmented()}
+     * to tell the two cases apart.
      *
      * @return the session id, or an empty optional
      */
     public Optional<String> getSessionId() {
         return Optional.ofNullable(sessionId);
+    }
+
+    /**
+     * Returns this row's 0-based position within its session, taken from the
+     * session ledger. Present only on segmented replay rows.
+     *
+     * @return the segment number, or an empty optional
+     */
+    public OptionalInt getSegmentSeq() {
+        return segmentSeq != null ? OptionalInt.of(segmentSeq) : OptionalInt.empty();
+    }
+
+    /**
+     * Returns the playable length of the whole session this row belongs to, in
+     * milliseconds: the sum of every live segment's duration. For a segmented
+     * replay {@link #getDurationMs()} is only this row's own segment, so this is
+     * the figure that matches the timeline a viewer plays. Absent for a
+     * single-archive replay, where {@link #getDurationMs()} is already the session
+     * length.
+     *
+     * @return the session duration in milliseconds, or an empty optional
+     */
+    public Optional<Long> getSessionDurationMs() {
+        return Optional.ofNullable(sessionDurationMs);
+    }
+
+    /**
+     * Returns the recorder's own local session id, when the recorder sent one.
+     * Older recorders do not.
+     *
+     * @return the recorder's session id, or an empty optional
+     */
+    public Optional<String> getRecordingSessionId() {
+        return Optional.ofNullable(recordingSessionId);
+    }
+
+    /**
+     * Returns whether a poster image for guest viewing has been uploaded. It is a
+     * presence flag, so a list can choose between the captured poster and a
+     * placeholder without fetching each one.
+     *
+     * @return {@code true} if a guest-view thumbnail exists
+     */
+    public boolean hasThumbnail() {
+        return hasThumbnail;
+    }
+
+    /**
+     * Returns whether a poster image for authenticated viewing has been uploaded.
+     *
+     * @return {@code true} if an authenticated-view thumbnail exists
+     */
+    public boolean hasPrivateThumbnail() {
+        return hasPrivateThumbnail;
     }
 
     /**
@@ -447,6 +517,11 @@ public final class ReplayMetadata {
         private List<Participant> participants;
         private String storageMode;
         private String sessionId;
+        private Integer segmentSeq;
+        private Long sessionDurationMs;
+        private String recordingSessionId;
+        private boolean hasThumbnail;
+        private boolean hasPrivateThumbnail;
 
         private Builder(String id) {
             this.id = Objects.requireNonNull(id, "id");
@@ -651,6 +726,46 @@ public final class ReplayMetadata {
          * @return this builder
          */
         public Builder sessionId(String v) { this.sessionId = v; return this; }
+
+        /**
+         * Sets the row's position within its session.
+         *
+         * @param v the 0-based segment number, or {@code null}
+         * @return this builder
+         */
+        public Builder segmentSeq(Integer v) { this.segmentSeq = v; return this; }
+
+        /**
+         * Sets the whole-session duration in milliseconds.
+         *
+         * @param v the session duration in milliseconds
+         * @return this builder
+         */
+        public Builder sessionDurationMs(Long v) { this.sessionDurationMs = v; return this; }
+
+        /**
+         * Sets the recorder's local session id.
+         *
+         * @param v the recorder's session id
+         * @return this builder
+         */
+        public Builder recordingSessionId(String v) { this.recordingSessionId = v; return this; }
+
+        /**
+         * Sets whether a guest-view thumbnail exists.
+         *
+         * @param v {@code true} if a guest-view thumbnail exists
+         * @return this builder
+         */
+        public Builder hasThumbnail(boolean v) { this.hasThumbnail = v; return this; }
+
+        /**
+         * Sets whether an authenticated-view thumbnail exists.
+         *
+         * @param v {@code true} if an authenticated-view thumbnail exists
+         * @return this builder
+         */
+        public Builder hasPrivateThumbnail(boolean v) { this.hasPrivateThumbnail = v; return this; }
 
         /**
          * Builds the immutable {@link ReplayMetadata}.

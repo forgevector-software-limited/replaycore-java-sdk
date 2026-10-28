@@ -25,12 +25,13 @@ a Bukkit, Spigot, Paper or Folia plugin.
 Releases are distributed through [JitPack](https://jitpack.io). Add the JitPack
 repository, then the dependency.
 
-The latest tagged release is `v1.5.17`, which reports SDK version `1.5.17` and
-tracks the matching ReplayCore product release. Use a tagged release for
-production rather than a mutable branch build.
+The latest tagged release is `v1.7.0`, which reports SDK version `1.7.0`. Use a
+tagged release for production rather than a mutable branch build.
 
-Some earlier product documentation named a `v1.1.5` coordinate. That tag was
-never published, so a build depending on it cannot resolve. Move to `v1.5.17`.
+Older tags are not numbered in release order. `v1.6.0` was tagged before
+`v1.5.17` and lacks the match-boundary and event-position types, and `v1.1.5` was
+never published, so a build depending on it cannot resolve. Move either to
+`v1.7.0`.
 
 **Gradle**
 
@@ -40,7 +41,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.5.17'
+    implementation 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.7.0'
 }
 ```
 
@@ -57,7 +58,7 @@ dependencies {
 <dependency>
     <groupId>com.github.forgevector-software-limited</groupId>
     <artifactId>replaycore-java-sdk</artifactId>
-    <version>v1.5.17</version>
+    <version>v1.7.0</version>
 </dependency>
 ```
 
@@ -171,7 +172,60 @@ Portals, plugin configuration, recorder credentials, resource packs, retention,
 team members, invitations and permission groups, visibility and white-labelling.
 `requestJson(...)` provides an origin-bound JSON escape hatch for future
 documented `/v1/` endpoints without allowing credentials to be redirected to a
-different host.
+different host. An overload takes extra request headers, such as
+`Idempotency-Key` and `If-Match`; it refuses `Authorization`, `Host`,
+`User-Agent`, `Accept` and `Content-Type`, and any header containing CR, LF or
+NUL.
+
+### Run a match collection
+
+A network that records matches opens a collection when a match starts, finalises
+it when it ends, and cuts clips from it. Every call that creates or changes a
+collection or asset needs an idempotency key that you choose: reuse the same key
+to retry a request safely, and the server returns the original outcome instead of
+applying it twice. The SDK never invents a key.
+
+```java
+import uk.co.forgevector.replaycore.api.model.AssetKind;
+import uk.co.forgevector.replaycore.api.model.AssetRequest;
+import uk.co.forgevector.replaycore.api.model.CollectionFinalizeRequest;
+import uk.co.forgevector.replaycore.api.model.CollectionRequest;
+import uk.co.forgevector.replaycore.api.model.CollectionVisibility;
+import uk.co.forgevector.replaycore.api.model.EventKind;
+import uk.co.forgevector.replaycore.api.model.ReleasePolicy;
+import uk.co.forgevector.replaycore.api.model.ReleaseTrigger;
+import uk.co.forgevector.replaycore.api.model.ReplayCollection;
+import uk.co.forgevector.replaycore.api.model.ScopeOperation;
+import uk.co.forgevector.replaycore.api.model.WatchTicket;
+
+ReleasePolicy policy = ReleasePolicy.builder(ReleaseTrigger.COLLECTION_END,
+        ReleaseTrigger.ASSET_READY, CollectionVisibility.PUBLIC).build();
+
+ReplayCollection match = client.createCollection(CollectionRequest
+        .builder("begin-" + matchId, serverId, "bedwars", "solo", "embargo-until-end", policy)
+        .externalMatchId(matchId)
+        .build());
+
+ScopeOperation clip = client.createAsset(match.getId(), AssetRequest
+        .builder("clip-" + matchId + "-1", AssetKind.EVENT_CLIP, segmentId, 3000, 3400)
+        .eventKind(EventKind.KILL)
+        .build());
+
+client.finalizeCollection(match.getId(),
+        CollectionFinalizeRequest.builder("end-" + matchId, 12000).build());
+
+WatchTicket ticket = client.issueWatchTicket(clip.getAssetId().get(), null);
+System.out.println("preparing=" + ticket.isPreparing());
+```
+
+The catalogue calls (`listCollections`, `getCollection`, `listCollectionAssets`,
+`listPlayerReplays`, `getAsset`, `bulkLookupCollections`, `getCollectionFacets`)
+need `catalog:read`. Held and revoked content is never returned to a key without
+the staff bypass scope. The client mints both single-use watch tickets
+(`issueWatchTicket`) and durable watch links (`createWatchLink`, a paid-plan
+feature). See the
+[API reference](docs/api-reference.md#network-integration-collections-and-assets)
+for every call, scope and header.
 
 ### Non-blocking use inside a plugin
 
@@ -229,8 +283,8 @@ Alongside the REST client, the SDK ships the supported in-process extension
 contract (package `uk.co.forgevector.replaycore.api.plugin`) for plugins running
 on the same server as ReplayCore. It covers recording state and lifecycle,
 timeline bookmarks, clips, recent kill-replay links, match scopes, reading a
-player's replay catalogue and minting watch links in process, and per-subject
-capture privacy for hidden or disguised players. See
+player's replay catalogue, minting watch tickets and watch links in process, and
+per-subject capture privacy for hidden or disguised players. See
 [`docs/plugin-extensions.md`](docs/plugin-extensions.md).
 
 ### Match scopes

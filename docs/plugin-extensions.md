@@ -1,15 +1,17 @@
 # Plugin extensions
 
 The package `uk.co.forgevector.replaycore.api.plugin` is the supported Java
-contract for plugins running on the same Minecraft server as ReplayCore. Contract
-version `1.1` provides recording state, lifecycle events, timeline bookmarks,
-on-demand clips, recent kill-replay links, match scopes and externally managed
-player-shaped subjects.
+contract for plugins running on the same Minecraft server as ReplayCore. It
+provides recording state, lifecycle events, timeline bookmarks, on-demand clips,
+recent kill-replay links, match scopes, the replay catalogue and externally
+managed player-shaped subjects. This release mirrors contract version `1.3`.
 
-Match scopes were added to the contract as an optional capability rather than a
-version bump, so a recorder that offers them still reports `apiVersion()` as
-`1.1`. Detect the surface with `matches()` or `externalSubjects()`, not with a
-version comparison.
+`apiVersion()` reports the contract the running recorder implements. Its minor
+rises when a method is added to an existing interface: `1.3` added
+`RecordingSession.replayId()` and `ReplayCatalogApi.createWatchLink(String)`, so
+check for at least `1.3` before calling either on a server you do not control.
+Optional capabilities are detected differently: use `matches()`,
+`externalSubjects()` or the services manager, not a version comparison.
 
 ## Add the contract to your plugin
 
@@ -18,7 +20,7 @@ running ReplayCore plugin supplies these classes:
 
 ```groovy
 dependencies {
-    compileOnly 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.5.17'
+    compileOnly 'com.github.forgevector-software-limited:replaycore-java-sdk:v1.7.0'
 }
 ```
 
@@ -74,9 +76,18 @@ if (recording.isRecording()) {
 }
 ```
 
-`currentSession()` returns the active `RecordingSession`, including its stable
-session id, server id, optional integration name, and start time. It is a
-read-only snapshot and does not start or stop recording.
+`currentSession()` returns the active `RecordingSession`: its replay id, session
+id, server id, optional integration name, and start time. It is a read-only
+snapshot and does not start or stop recording.
+
+The two ids join a recording to the REST API. `replayId()` is the `id` of the
+archive being written, which `GET /v1/api/replays/{id}` resolves; the value from
+`onRecordingStarted` is the id of the entry the recording is listed under, so it
+is the simplest key to store. `sessionId()` is the `session_id` the REST API
+reports. It equals `replayId()` until the recorder rotates a long recording into
+a second archive, then becomes the session id every segment shares and never
+changes again. Read it from `onRecordingStopped` and pass it to
+`ReplayQuery.builder().sessionId(...)` or `GET /v1/api/replays?session_id=`.
 
 ## Observe recording lifecycle
 
@@ -87,7 +98,7 @@ import uk.co.forgevector.replaycore.api.plugin.RecordingSession;
 RecordingListener listener = new RecordingListener() {
     @Override
     public void onRecordingStarted(RecordingSession session) {
-        getLogger().info("ReplayCore recording started: " + session.sessionId());
+        getLogger().info("ReplayCore recording started: " + session.replayId());
     }
 
     @Override
@@ -562,11 +573,11 @@ the durable operation, asset, processing, playback and retry fields. Terminal
 results are versioned and immutable, so retries cannot rewrite a previously
 reported outcome.
 
-## Read a player's replays and mint a watch link
+## Read a player's replays and mint watch access
 
-`ReplayCatalogApi` reads the replay catalogue for one player and mints a
-short-lived watch link, so a network can build its own browser and its own watch
-button without a separate developer key on the server. The call is carried to the
+`ReplayCatalogApi` reads the replay catalogue for one player and mints watch
+tickets and durable watch links, so a network can build its own browser and its
+own watch button without a separate developer key on the server. The call is carried to the
 cloud over the recorder's own recording key, so the addon never handles a bearer
 key itself.
 
@@ -616,9 +627,20 @@ catalog.createWatchTicket(WatchTicketRequest.builder(assetId).build())
         });
 ```
 
-Both methods return a `CompletionStage` and never block the calling thread. A call
-that is refused or fails completes the stage exceptionally rather than throwing
-inline, so branch on the stage's outcome.
+`createWatchLink` (contract `1.3`) mints a durable browser link instead: one URL
+to post in chat or on a website, with no viewer identity and no expiry. The cloud
+re-checks the asset on every view, so the link stops working as soon as the asset
+is held, revoked or no longer public or unlisted. Links are available on paid
+plans, and minting the same asset twice returns the same link.
+
+```java
+catalog.createWatchLink(assetId)
+        .thenAccept(link -> getLogger().info("Watch: " + link.watchUrl()));
+```
+
+Every method returns a `CompletionStage` and never blocks the calling thread. A
+call that is refused or fails completes the stage exceptionally rather than
+throwing inline, so branch on the stage's outcome.
 
 ## Redact a hidden or disguised player
 

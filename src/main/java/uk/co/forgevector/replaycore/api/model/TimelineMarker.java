@@ -25,7 +25,9 @@ public final class TimelineMarker {
     private final String label;
     private final String category;
     private final String colour;
+    private final String icon;
     private final String actor;
+    private final String integration;
     private final Instant createdAt;
 
     /**
@@ -42,13 +44,35 @@ public final class TimelineMarker {
      */
     public TimelineMarker(String id, String replayId, long tick, String label,
                           String category, String colour, String actor, Instant createdAt) {
+        this(id, replayId, tick, label, category, colour, null, actor, null, createdAt);
+    }
+
+    /**
+     * Constructs a marker. Intended for internal deserialisation and tests.
+     *
+     * @param id          the marker id; never {@code null}
+     * @param replayId    the resolved replay id; never {@code null}
+     * @param tick        the timeline position in ticks
+     * @param label       the marker label; never {@code null}
+     * @param category    an optional category, or {@code null}
+     * @param colour      an optional {@code #rrggbb} colour, or {@code null}
+     * @param icon        an optional icon token, or {@code null}
+     * @param actor       an optional actor label, or {@code null}
+     * @param integration an optional integration name, or {@code null}
+     * @param createdAt   the creation instant, or {@code null} if the server omitted it
+     */
+    public TimelineMarker(String id, String replayId, long tick, String label,
+                          String category, String colour, String icon, String actor,
+                          String integration, Instant createdAt) {
         this.id = Objects.requireNonNull(id, "id");
         this.replayId = Objects.requireNonNull(replayId, "replayId");
         this.tick = tick;
         this.label = Objects.requireNonNull(label, "label");
         this.category = category;
         this.colour = colour;
+        this.icon = icon;
         this.actor = actor;
+        this.integration = integration;
         this.createdAt = createdAt;
     }
 
@@ -109,12 +133,32 @@ public final class TimelineMarker {
     }
 
     /**
+     * Returns the marker's icon token, if one was supplied. The token is one of
+     * {@link TimelineEventRequest#ICONS}; without one the viewer draws the default
+     * icon for the event.
+     *
+     * @return the icon token, or an empty optional
+     */
+    public Optional<String> getIcon() {
+        return Optional.ofNullable(icon);
+    }
+
+    /**
      * Returns the marker's actor label, if one was supplied.
      *
      * @return the actor, or an empty optional
      */
     public Optional<String> getActor() {
         return Optional.ofNullable(actor);
+    }
+
+    /**
+     * Returns the integration that raised the marker, if one was named.
+     *
+     * @return the integration name, or an empty optional
+     */
+    public Optional<String> getIntegration() {
+        return Optional.ofNullable(integration);
     }
 
     /**

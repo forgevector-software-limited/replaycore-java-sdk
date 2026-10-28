@@ -107,6 +107,9 @@ section and [`api-reference.md`](api-reference.md) for the full list.
   integrations, Network Portals, resource packs, team roles and permission
   groups. The [API reference](api-reference.md#workspace-setup-automation)
   lists the complete boundary.
+- To record matches as collections, cut clips and read the catalogue, see
+  [network integration](api-reference.md#network-integration-collections-and-assets).
+  Those calls need an idempotency key of your own choosing.
 - If your plugin runs on the same server as the recorder, read
   [plugin extensions](plugin-extensions.md) for the in-process contract. It
   covers timeline bookmarks, clips, death-replay links, and match scopes for

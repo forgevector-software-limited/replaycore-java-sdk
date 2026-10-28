@@ -1,0 +1,17 @@
+{
+  "id": "f1b2c3d4-0000-4000-8000-000000000001",
+  "asset_id": "8a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+  "ticket": "9f2c4e6a8b0d1f3a5c7e9b1d3f5a7c9e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f01",
+  "redemption_url": "https://api.replaycore.com/v1/replay-assets/8a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d/watch-ticket/redeem",
+  "playback": [
+    {
+      "replay_id": "5e55105e-0000-4000-8000-000000000001",
+      "sequence_index": 1,
+      "start_tick": 3000,
+      "end_tick": 3400
+    }
+  ],
+  "expires_at": "2026-10-28T12:16:00Z",
+  "expires_in": 300,
+  "single_use": true
+}

@@ -1,0 +1,45 @@
+{
+  "gameplay_boundaries_complete": true,
+  "authoritative_match_complete": true,
+  "collection_ended_at": "2026-10-28T12:10:00Z",
+  "external_match_id": "match-20261028-0042",
+  "id": "8a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+  "collection_id": "3f0c2a64-5d1e-4b7a-9c3e-1a2b3c4d5e6f",
+  "kind": "EVENT_CLIP",
+  "event_kind": "KILL",
+  "segment_id": "2b7c9d10-6e3f-4f4a-8b5c-0d1e2f3a4b5c",
+  "start_tick": 3000,
+  "end_tick": 3400,
+  "processing_state": "ready",
+  "release_state": "released",
+  "visibility": "public",
+  "created_at": "2026-10-28T12:06:00Z",
+  "updated_at": "2026-10-28T12:07:00Z",
+  "relationships": [
+    {
+      "id": "c1b2c3d4-0000-4000-8000-000000000001",
+      "asset_id": "8a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+      "player_uuid": "069a79f4-44e9-4726-a5be-fca90e38aaf5",
+      "relation": "KILL",
+      "created_at": "2026-10-28T12:06:00Z"
+    }
+  ],
+  "viewer_relation": "KILL",
+  "participants": [
+    {
+      "player_uuid": "069a79f4-44e9-4726-a5be-fca90e38aaf5",
+      "relation": "KILL"
+    },
+    {
+      "player_uuid": "853c80ef-3c37-49fd-aa49-938b674adae6",
+      "relation": "DEATH"
+    }
+  ],
+  "duration_ticks": 400,
+  "thumbnail_ready": true,
+  "playback_eligible": true,
+  "playable": true,
+  "media_ready": true,
+  "expired": true,
+  "watch_url": "https://watch.replaycore.com/w/0f1e2d3c4b5a69788796a5b4c3d2e1f0"
+}

@@ -20,6 +20,18 @@ public enum Quality {
     /** High-definition capture. Wire value {@code "hd"}. */
     HD("hd"),
 
+    /** Low capture quality. Wire value {@code "low"}. */
+    LOW("low"),
+
+    /** Medium capture quality. Wire value {@code "medium"}. */
+    MEDIUM("medium"),
+
+    /** High capture quality. Wire value {@code "high"}. */
+    HIGH("high"),
+
+    /** The highest capture quality. Wire value {@code "ultra"}. */
+    ULTRA("ultra"),
+
     /** A value this SDK release does not recognise. */
     UNKNOWN("unknown");
 

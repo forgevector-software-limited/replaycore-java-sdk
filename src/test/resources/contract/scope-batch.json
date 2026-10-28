@@ -1,0 +1,17 @@
+{
+  "results": [
+    {
+      "status": "rejected",
+      "code": "INVALID_ENTRY",
+      "detail": "tick must not be negative"
+    },
+    {
+      "status": "accepted"
+    },
+    {
+      "status": "retryable",
+      "code": "INTERNAL_ERROR",
+      "detail": "the write could not be completed; retry"
+    }
+  ]
+}
