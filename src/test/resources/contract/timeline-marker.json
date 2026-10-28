@@ -1,0 +1,12 @@
+{
+  "id": "9c8b7a65-4d3e-4f2a-8b1c-0d9e8f7a6b5c",
+  "replayId": "00000000-0000-4000-8000-0000000000b1",
+  "tick": 4200,
+  "label": "Final Death",
+  "category": "combat",
+  "colour": "#ff3355",
+  "icon": "skull",
+  "actor": "arena-plugin",
+  "createdAt": "2026-10-28T12:05:00Z",
+  "integration": "vulcan"
+}

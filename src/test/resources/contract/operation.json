@@ -1,0 +1,16 @@
+{
+  "id": "e1b2c3d4-0000-4000-8000-000000000001",
+  "collection_id": "3f0c2a64-5d1e-4b7a-9c3e-1a2b3c4d5e6f",
+  "asset_id": "8a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+  "status": "completed",
+  "processing_state": "ready",
+  "failure_code": "none",
+  "retryable": true,
+  "attempt_generation": 2,
+  "playable_at": "2026-10-28T12:11:00Z",
+  "resource_url": "/v1/replay-assets/8a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+  "watch_url": "https://watch.replaycore.com/w/0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+  "watch_ticket_eligible": true,
+  "link_ready": true,
+  "playable": true
+}

@@ -1,0 +1,14 @@
+{
+  "session": {
+    "total_ticks": 400
+  },
+  "segments": [
+    {
+      "sequence_index": 1,
+      "start_tick": 3000,
+      "end_tick": 3400,
+      "url": "https://r2.replaycore.example/segments/0?sig=abc123",
+      "expires_in": 120
+    }
+  ]
+}

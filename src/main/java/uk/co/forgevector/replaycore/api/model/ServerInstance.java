@@ -23,6 +23,8 @@ public final class ServerInstance {
     private final ServerStatus status;
     private final Instant lastSeenAt;
     private final String pluginVersion;
+    private final String minecraftVersion;
+    private final PluginUpdate update;
     private final Integer playerCount;
     private final long replayCount;
 
@@ -39,11 +41,50 @@ public final class ServerInstance {
      */
     public ServerInstance(String id, String name, ServerStatus status, Instant lastSeenAt,
                           String pluginVersion, Integer playerCount, long replayCount) {
+        this(id, name, status, lastSeenAt, pluginVersion, null, playerCount, replayCount);
+    }
+
+    /**
+     * Constructs a server instance from the public API response.
+     *
+     * @param id               the stable server id; never {@code null}
+     * @param name             the display name; never {@code null}
+     * @param status           whether the instance is online; never {@code null}
+     * @param lastSeenAt       when it last reported in, or {@code null}
+     * @param pluginVersion    the last reported ReplayCore plugin version, or {@code null}
+     * @param minecraftVersion the last reported Minecraft version, or {@code null}
+     * @param playerCount      the live player count, or {@code null} while unavailable
+     * @param replayCount      the number of replays recorded by this instance
+     */
+    public ServerInstance(String id, String name, ServerStatus status, Instant lastSeenAt,
+                          String pluginVersion, String minecraftVersion, Integer playerCount,
+                          long replayCount) {
+        this(id, name, status, lastSeenAt, pluginVersion, minecraftVersion, null, playerCount, replayCount);
+    }
+
+    /**
+     * Constructs a server instance from the public API response.
+     *
+     * @param id               the stable server id; never {@code null}
+     * @param name             the display name; never {@code null}
+     * @param status           whether the instance is online; never {@code null}
+     * @param lastSeenAt       when it last reported in, or {@code null}
+     * @param pluginVersion    the last reported ReplayCore plugin version, or {@code null}
+     * @param minecraftVersion the last reported Minecraft version, or {@code null}
+     * @param update           the plugin-update advice, or {@code null}
+     * @param playerCount      the live player count, or {@code null} while unavailable
+     * @param replayCount      the number of replays recorded by this instance
+     */
+    public ServerInstance(String id, String name, ServerStatus status, Instant lastSeenAt,
+                          String pluginVersion, String minecraftVersion, PluginUpdate update,
+                          Integer playerCount, long replayCount) {
         this.id = Objects.requireNonNull(id, "id");
         this.name = Objects.requireNonNull(name, "name");
         this.status = Objects.requireNonNull(status, "status");
         this.lastSeenAt = lastSeenAt;
         this.pluginVersion = pluginVersion;
+        this.minecraftVersion = minecraftVersion;
+        this.update = update;
         this.playerCount = playerCount;
         this.replayCount = replayCount;
     }
@@ -71,6 +112,20 @@ public final class ServerInstance {
     /** @return the last reported plugin version, or an empty optional */
     public Optional<String> getPluginVersion() {
         return Optional.ofNullable(pluginVersion);
+    }
+
+    /** @return the last reported Minecraft version, or an empty optional */
+    public Optional<String> getMinecraftVersion() {
+        return Optional.ofNullable(minecraftVersion);
+    }
+
+    /**
+     * Returns the plugin-update advice the cloud computes for this server.
+     *
+     * @return the update advice, or an empty optional
+     */
+    public Optional<PluginUpdate> getUpdate() {
+        return Optional.ofNullable(update);
     }
 
     /**
@@ -103,18 +158,22 @@ public final class ServerInstance {
                 && status == that.status
                 && Objects.equals(lastSeenAt, that.lastSeenAt)
                 && Objects.equals(pluginVersion, that.pluginVersion)
+                && Objects.equals(minecraftVersion, that.minecraftVersion)
+                && Objects.equals(update, that.update)
                 && Objects.equals(playerCount, that.playerCount);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, status, lastSeenAt, pluginVersion, playerCount, replayCount);
+        return Objects.hash(id, name, status, lastSeenAt, pluginVersion, minecraftVersion, update,
+                playerCount, replayCount);
     }
 
     @Override
     public String toString() {
         return "ServerInstance{id=" + id + ", name=" + name + ", status=" + status
                 + ", lastSeenAt=" + lastSeenAt + ", pluginVersion=" + pluginVersion
+                + ", minecraftVersion=" + minecraftVersion
                 + ", playerCount=" + playerCount + ", replayCount=" + replayCount + '}';
     }
 }

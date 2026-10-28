@@ -5,7 +5,11 @@
 
 package uk.co.forgevector.replaycore.api.model;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -24,13 +28,20 @@ import java.util.regex.Pattern;
  * </ul>
  *
  * <p>The builder validates field bounds locally (label 1&ndash;120 chars,
- * category &le; 60, actor &le; 80, colour as {@code #rrggbb}) to match the
- * server's own checks. Writing a marker requires an API key with the
+ * category &le; 60, actor &le; 80, colour as {@code #rrggbb}, icon from
+ * {@link #ICONS}, integration as 1&ndash;64 lowercase letters, digits, dashes or
+ * underscores) to match the server's own checks. Writing a marker requires an API key with the
  * {@link ApiScope#REPLAYS_WRITE} scope.
  */
 public final class TimelineEventRequest {
 
+    /** The icon tokens the cloud accepts for a marker. */
+    public static final List<String> ICONS = Collections.unmodifiableList(Arrays.asList(
+            "swords", "skull", "shield", "pickaxe", "blast", "flask", "user-plus", "bookmark",
+            "flag", "sparkles", "hammer", "star", "trophy", "bed", "diamond"));
+
     private static final Pattern HEX_COLOUR = Pattern.compile("^#[0-9a-fA-F]{6}$");
+    private static final Pattern INTEGRATION = Pattern.compile("^[a-z0-9_-]{1,64}$");
 
     private final String replayId;
     private final String serverId;
@@ -38,7 +49,9 @@ public final class TimelineEventRequest {
     private final String label;
     private final String category;
     private final String colour;
+    private final String icon;
     private final String actor;
+    private final String integration;
 
     private TimelineEventRequest(Builder b) {
         this.replayId = b.replayId;
@@ -47,7 +60,9 @@ public final class TimelineEventRequest {
         this.label = b.label;
         this.category = b.category;
         this.colour = b.colour;
+        this.icon = b.icon;
         this.actor = b.actor;
+        this.integration = b.integration;
     }
 
     /**
@@ -72,8 +87,14 @@ public final class TimelineEventRequest {
         if (colour != null) {
             body.put("colour", colour);
         }
+        if (icon != null) {
+            body.put("icon", icon);
+        }
         if (actor != null) {
             body.put("actor", actor);
+        }
+        if (integration != null) {
+            body.put("integration", integration);
         }
         return body;
     }
@@ -111,7 +132,9 @@ public final class TimelineEventRequest {
         private String label;
         private String category;
         private String colour;
+        private String icon;
         private String actor;
+        private String integration;
 
         private Builder() {
         }
@@ -206,6 +229,32 @@ public final class TimelineEventRequest {
         }
 
         /**
+         * Sets an optional icon for the marker. The cloud accepts {@code swords},
+         * {@code skull}, {@code shield}, {@code pickaxe}, {@code blast}, {@code flask},
+         * {@code user-plus}, {@code bookmark}, {@code flag}, {@code sparkles},
+         * {@code hammer}, {@code star}, {@code trophy}, {@code bed} and
+         * {@code diamond}; they are listed in {@link TimelineEventRequest#ICONS}.
+         * Without one the viewer draws the default icon.
+         *
+         * @param icon one of {@link TimelineEventRequest#ICONS}, in any case, or
+         *             {@code null} to clear
+         * @return this builder
+         * @throws IllegalArgumentException if not a supported icon
+         */
+        public Builder icon(String icon) {
+            if (icon == null) {
+                this.icon = null;
+                return this;
+            }
+            String normalised = icon.trim().toLowerCase(Locale.ROOT);
+            if (!ICONS.contains(normalised)) {
+                throw new IllegalArgumentException("icon must be one of " + ICONS);
+            }
+            this.icon = normalised;
+            return this;
+        }
+
+        /**
          * Sets an optional actor label (who or what raised the marker).
          *
          * @param actor at most 80 characters, or {@code null} to clear
@@ -217,6 +266,24 @@ public final class TimelineEventRequest {
                 throw new IllegalArgumentException("actor must be at most 80 characters");
             }
             this.actor = actor;
+            return this;
+        }
+
+        /**
+         * Names the integration raising the marker, so the marker's visibility can
+         * follow that integration's team-role rules.
+         *
+         * @param integration 1 to 64 lowercase letters, digits, dashes or underscores,
+         *                    or {@code null} to clear
+         * @return this builder
+         * @throws IllegalArgumentException if not a well-formed identifier
+         */
+        public Builder integration(String integration) {
+            if (integration != null && !INTEGRATION.matcher(integration).matches()) {
+                throw new IllegalArgumentException(
+                        "integration must be 1-64 lowercase letters, digits, dashes or underscores");
+            }
+            this.integration = integration;
             return this;
         }
 

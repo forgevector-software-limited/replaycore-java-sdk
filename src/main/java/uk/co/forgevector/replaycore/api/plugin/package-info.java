@@ -39,23 +39,24 @@
  *       optional on production recorders until end-to-end archive and cloud-correlation wiring is enabled
  *       and verified.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.ReplayCatalogApi}: read the RFC-0009 replay
- *       catalogue for one player and mint a short-lived watch ticket, the in-process twin of the developer
- *       API's {@code GET /v1/players/{uuid}/replays} and {@code POST /v1/replay-assets/{id}/watch-ticket}
- *       routes. The call itself goes out over the recorder's own HMAC-signed recording-key credential
- *       against {@code /v1/recorder/players/{uuid}/replays} and
- *       {@code /v1/recorder/replay-assets/{id}/watch-ticket}, never the Bearer {@code rc_live_} lane, so an
- *       addon calling this interface never needs a separate developer key on the server. Registered under
+ *       catalogue for one player, mint a short-lived watch ticket and mint a durable browser watch link,
+ *       the in-process twin of the developer API's {@code GET /v1/players/{uuid}/replays},
+ *       {@code POST /v1/replay-assets/{id}/watch-ticket} and {@code POST /v1/replay-assets/{id}/watch-link}
+ *       routes. The calls go out over the recorder's own HMAC-signed recording-key credential against the
+ *       matching {@code /v1/recorder/...} routes, never the Bearer {@code rc_live_} lane, so an addon
+ *       calling this interface never needs a separate developer key on the server. Registered under
  *       the same condition as {@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreMatchApi}, but unlike
  *       the surfaces above it is obtained from the platform's {@code ServicesManager} with
  *       {@code getRegistration(ReplayCatalogApi.class)}, not from the umbrella
  *       {@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreApi}, which has no catalogue accessor.</li>
  *   <li>{@link uk.co.forgevector.replaycore.api.plugin.RecordingListener} and
- *       {@link uk.co.forgevector.replaycore.api.plugin.RecordingSession}: observe the lifecycle. Four
- *       callbacks fire. {@code onRecordingStarted} and {@code onRecordingStopped} run on the server's main
- *       thread, so they may touch the platform API directly. {@code onAssetReady} and
- *       {@code onAssetFailed} run on the scope finalisation worker instead, because the outcome only
- *       becomes known once the cloud confirms it. A listener that needs the platform API from those two
- *       must schedule the work back onto the main thread itself.</li>
+ *       {@link uk.co.forgevector.replaycore.api.plugin.RecordingSession}: observe the lifecycle and
+ *       join a recording to its REST replay through {@code replayId()} and {@code sessionId()}. Four
+ *       callbacks fire. Start and stop callbacks run on the recorder lifecycle thread. Asset callbacks
+ *       run on a finalisation worker after the cloud confirms the outcome. Callbacks do not grant world
+ *       or entity ownership. Schedule live platform access on the appropriate Bukkit, Folia region or
+ *       Folia entity scheduler. Unregister listeners and cancel addon-owned tasks when the addon
+ *       disables; guard callbacks already present in a dispatch snapshot with an active flag.</li>
  * </ul>
  *
  * <p>Capability negotiation is built in: the umbrella hands back the always-present surfaces directly and
@@ -81,12 +82,13 @@
  * {@link uk.co.forgevector.replaycore.api.plugin.RecordingListener},
  * {@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreMatchApi} and the request, update and result
  * types it names, including {@link uk.co.forgevector.replaycore.api.plugin.ScopeClipRequest};
- * {@link uk.co.forgevector.replaycore.api.plugin.ReplayCatalogApi} and the query, page, entry and
- * watch-ticket types it names ({@link uk.co.forgevector.replaycore.api.plugin.ReplayCatalogQuery},
+ * {@link uk.co.forgevector.replaycore.api.plugin.ReplayCatalogApi} and the query, page, entry,
+ * watch-ticket and watch-link types it names ({@link uk.co.forgevector.replaycore.api.plugin.ReplayCatalogQuery},
  * {@link uk.co.forgevector.replaycore.api.plugin.ReplayCatalogPage},
  * {@link uk.co.forgevector.replaycore.api.plugin.ReplayCatalogEntry},
- * {@link uk.co.forgevector.replaycore.api.plugin.WatchTicketRequest} and
- * {@link uk.co.forgevector.replaycore.api.plugin.WatchTicketResult}).
+ * {@link uk.co.forgevector.replaycore.api.plugin.WatchTicketRequest},
+ * {@link uk.co.forgevector.replaycore.api.plugin.WatchTicketResult} and
+ * {@link uk.co.forgevector.replaycore.api.plugin.WatchLinkResult}).
  *
  * <p><strong>Contract present but not production-attached:</strong>
  * {@link uk.co.forgevector.replaycore.api.plugin.ReplayCoreExternalSubjectApi} and the external-subject

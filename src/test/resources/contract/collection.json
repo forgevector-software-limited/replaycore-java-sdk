@@ -1,0 +1,69 @@
+{
+  "id": "3f0c2a64-5d1e-4b7a-9c3e-1a2b3c4d5e6f",
+  "external_match_id": "match-20261028-0042",
+  "category": "bedwars",
+  "mode": "solo",
+  "policy_id": "embargo-until-end",
+  "server_id": "11111111-1111-4111-8111-111111111111",
+  "world_ids": [
+    "world",
+    "world_nether"
+  ],
+  "start_tick": 100,
+  "end_tick": 12000,
+  "started_at": "2026-10-28T12:00:00Z",
+  "ended_at": "2026-10-28T12:10:00Z",
+  "metadata": {
+    "acme:arena": "sky-fortress"
+  },
+  "competition_id": "spring-cup",
+  "series_id": "semi-final",
+  "round_id": "round-2",
+  "bracket_match_id": "b-17",
+  "game_number": 2,
+  "best_of": 3,
+  "party_event_id": "spring-weekend",
+  "region": "eu-west",
+  "team_size": 4,
+  "ranked": true,
+  "tournament": true,
+  "processing_state": "ready",
+  "release_state": "released",
+  "visibility": "public",
+  "created_at": "2026-10-28T12:00:00Z",
+  "updated_at": "2026-10-28T12:11:00Z",
+  "participants": [
+    {
+      "id": "a1b2c3d4-0000-4000-8000-000000000001",
+      "collection_id": "3f0c2a64-5d1e-4b7a-9c3e-1a2b3c4d5e6f",
+      "player_uuid": "069a79f4-44e9-4726-a5be-fca90e38aaf5",
+      "player_name": "Notch",
+      "team_key": "red",
+      "role": "participant",
+      "joined_tick": 50,
+      "left_tick": 12000,
+      "result": "winner",
+      "created_at": "2026-10-28T12:00:00Z",
+      "updated_at": "2026-10-28T12:10:00Z"
+    }
+  ],
+  "teams": [
+    {
+      "id": "b1b2c3d4-0000-4000-8000-000000000001",
+      "collection_id": "3f0c2a64-5d1e-4b7a-9c3e-1a2b3c4d5e6f",
+      "key": "red",
+      "name": "Red Team",
+      "result": "winner",
+      "placement": 1,
+      "created_at": "2026-10-28T12:00:00Z",
+      "updated_at": "2026-10-28T12:10:00Z"
+    }
+  ],
+  "viewer_relation": "KILL",
+  "duration_ticks": 12000,
+  "thumbnail_ready": true,
+  "playback_eligible": true,
+  "playable": true,
+  "media_ready": true,
+  "expired": true
+}

@@ -1,0 +1,148 @@
+{
+  "servers": [
+    {
+      "installation": {
+        "id": "4d5e6f70-8192-4a3b-8c4d-5e6f70819293",
+        "state": "approved",
+        "observedIp": "203.0.113.10",
+        "approvalRevision": 3,
+        "registrationVersion": 2,
+        "reportedMinecraftPort": 25565,
+        "setupStatus": "complete",
+        "platform": "paper",
+        "parentInstallationId": "5e6f7081-92a3-4b4c-9d5e-6f7081929394",
+        "parentName": "Network Proxy",
+        "approvalSource": "dashboard",
+        "trustedSource": true,
+        "refusedIp": "198.51.100.7",
+        "refusedAt": "2026-10-27T09:30:00Z",
+        "refusedCount": 2,
+        "createdAt": "2026-09-01T08:00:00Z",
+        "pendingSince": "2026-09-01T07:55:00Z",
+        "pendingExpired": true
+      },
+      "id": "11111111-1111-4111-8111-111111111111",
+      "name": "Lobby 1",
+      "status": "online",
+      "lastSeenAt": "2026-10-28T12:09:30Z",
+      "pluginVersion": "1.5.34",
+      "minecraftVersion": "1.21.4",
+      "playerCount": 37,
+      "replayCount": 1284,
+      "captureHealth": {
+        "private_context": {
+          "counter_scope": "context_service_lifetime",
+          "pending": 2,
+          "completed": 40,
+          "refused": 1,
+          "incomplete": 3
+        },
+        "scope_delivery": {
+          "counter_scope": "registry_lifetime",
+          "scope_worker_unavailable": 1,
+          "finalize_worker_unavailable": 2,
+          "finalize_queue_rejected": 3,
+          "cloud_outage_spooled": 4,
+          "segment_memory_refused": 5,
+          "segment_io_failed": 6
+        },
+        "capture_gate": "open",
+        "storage_full": false,
+        "packet_events": "available",
+        "packet_events_code": "ok",
+        "loss_counters": {
+          "queue_full": 1,
+          "tick_failures": 2,
+          "gameplay_events": 3,
+          "integration_bookmarks": 4,
+          "anticheat_flags": 5,
+          "event_payloads": 6,
+          "block_changes_over_cap": 7,
+          "block_changes_per_tick": 8
+        },
+        "durable_watermark": 918273,
+        "capture_progress": {
+          "epoch": "e-2026-10-28T11:58:00Z",
+          "attempted_sequence": 900,
+          "accepted_sequence": 899,
+          "written_sequence": 898,
+          "durable_sequence": 897,
+          "accepted_records": 899,
+          "dropped_records": 1,
+          "written_records": 898,
+          "durable_records": 897,
+          "has_gaps": true,
+          "channels": [
+            {
+              "channel": "tick",
+              "attempted_sequence": 900,
+              "accepted_sequence": 899,
+              "written_sequence": 898,
+              "durable_sequence": 897,
+              "attempted_records": 900,
+              "accepted_records": 899,
+              "dropped_records": 1,
+              "written_records": 898,
+              "durable_records": 897,
+              "last_attempt_age_ms": 40,
+              "last_accepted_age_ms": 45
+            }
+          ],
+          "gap_intervals": [
+            {
+              "channel": "tick",
+              "from_sequence": 10,
+              "to_sequence": 12,
+              "from_age_ms": 5000,
+              "to_age_ms": 4900,
+              "reason": "queue_full"
+            }
+          ],
+          "omitted_gap_intervals": 2,
+          "recovery_state": "recovered",
+          "gap_journal": {
+            "captured_revision": 7,
+            "written_revision": 7,
+            "durable_revision": 6,
+            "uncertain": true,
+            "failure": "io"
+          }
+        },
+        "resource_state": {
+          "spool_state": "ok",
+          "wal_writer_state": "ok",
+          "memory_reserved_bytes": 1048576,
+          "memory_limit_bytes": 8388608,
+          "spool_bytes": 2048,
+          "spool_limit_bytes": 1073741824
+        },
+        "upload_shaping": {
+          "requested_bytes_per_second": 1000000,
+          "effective_bytes_per_second": 800000,
+          "adaptive": true,
+          "backlog": true,
+          "capacity_warning": true
+        }
+      },
+      "captureHealthReceivedAt": "2026-10-28T12:09:00Z",
+      "update": {
+        "status": "current",
+        "minimumSupportedVersion": "1.5.0",
+        "latestClassicVersion": "1.5.34",
+        "loaderAvailable": true,
+        "loaderDownloadUrl": "https://api.replaycore.com/v1/plugin/download"
+      }
+    }
+  ],
+  "pending": [
+    {
+      "serverId": "6f708192-a3b4-4c5d-8e6f-708192a3b4c5",
+      "name": "Practice 2",
+      "categoryId": "708192a3-b4c5-4d6e-8f70-8192a3b4c5d6",
+      "sourceServerId": "11111111-1111-4111-8111-111111111111",
+      "createdAt": "2026-10-28T11:00:00Z",
+      "expiresAt": "2026-10-29T11:00:00Z"
+    }
+  ],
+  "expiredLoaderDownloads": 2
+}

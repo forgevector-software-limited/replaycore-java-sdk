@@ -5,7 +5,7 @@ REST endpoints it wraps. It reflects the endpoints ReplayCore exposes to API-key
 holders today; see [Endpoint coverage](#endpoint-coverage) for the current
 boundary.
 
-This page documents the `1.5.17` release. Documentation for earlier releases
+This page documents the `1.7.0` release. Documentation for earlier releases
 remains available from each release's Git tag.
 
 The generated Javadoc is the authoritative, method-level reference. Build it with
@@ -80,6 +80,7 @@ The builder validates bounds locally, matching the server's own checks.
 | `startedBefore(Instant)` | `started_before` | Upper time bound (exclusive). |
 | `durationMinMs(long)` | `duration_min_ms` | 0–86 400 000 ms. |
 | `durationMaxMs(long)` | `duration_max_ms` | 0–86 400 000 ms. |
+| `sessionId(String)` | `session_id` | The replay that represents one recording session; must be a UUID. Matches `getSessionId()`. |
 
 Cross-field rules enforced at `build()`: `player`/`playerUuid` are mutually
 exclusive; `startedAfter` must be before `startedBefore`; `durationMinMs` must
@@ -129,8 +130,13 @@ Fetch the next page with `ReplayQuery.nextPageOf(page).build()`.
 | `getRecoveryStatus()` | `Optional<String>` | `recovery_status` |
 | `getFormatVersion()` | `int` | `format_version` |
 | `getParticipants()` | `List<Participant>` | `participants` |
-| `getStorageMode()` / `isSegmented()` | `Optional<String>` / `boolean` | `storage_mode` |
-| `getSessionId()` | `Optional<String>` | `session_id` |
+| `getStorageMode()` / `isSegmented()` | `Optional<String>` / `boolean` | `storage_mode`; `isSegmented()` is true when it is `"segmented"`. |
+| `getSessionId()` | `Optional<String>` | `session_id`. Always sent: the session id of a segmented replay, or the replay's own id otherwise. |
+| `getSegmentSeq()` | `OptionalInt` | `segment_seq`. The 0-based segment number; present only on segmented replay rows. |
+| `getSessionDurationMs()` | `Optional<Long>` | `session_duration_ms`. Length of the whole session; absent for a single-archive replay. |
+| `getRecordingSessionId()` | `Optional<String>` | `recording_session_id`. The recorder's own session id, when sent. |
+| `hasThumbnail()` | `boolean` | `has_thumbnail` |
+| `hasPrivateThumbnail()` | `boolean` | `has_private_thumbnail` |
 
 ### `isReady()`
 
@@ -183,6 +189,8 @@ perform management writes.
 | `getStatus()` | `ONLINE`, `OFFLINE`, or `UNKNOWN`. |
 | `getLastSeenAt()` | Last report time, when available. |
 | `getPluginVersion()` | Last reported ReplayCore plugin version, when available. |
+| `getMinecraftVersion()` | Last reported Minecraft version, when available. |
+| `getUpdate()` | `PluginUpdate` advice: `getStatus()` (`CURRENT`, `OUTDATED`, `UNSUPPORTED`, `MIGRATE_TO_LOADER`, `LOADER`, `UNKNOWN`), `getMinimumSupportedVersion()`, `getLatestClassicVersion()`, `isLoaderAvailable()`, `getLoaderDownloadUrl()`. |
 | `getPlayerCount()` | Live player count; absent while offline or unavailable. |
 | `getReplayCount()` | Number of replays recorded by this server instance. |
 
@@ -230,6 +238,14 @@ documented JSON endpoints on the configured ReplayCore origin. It accepts only
 absolute `/v1/` paths and never accepts an external URL, so it cannot redirect
 the API key to another host.
 
+`requestJson(method, path, body, headers)` adds request headers. It is meant for
+`Idempotency-Key`, which makes a mutating call safe to retry, and `If-Match`,
+which makes an update conditional on the version last read. `Authorization`,
+`Host`, `User-Agent`, `Accept` and `Content-Type` belong to the client and are
+refused in any letter case with `IllegalArgumentException`. Header names must be
+HTTP tokens, may not repeat, and neither names nor values may contain CR, LF or
+NUL. The three-argument form sends no extra headers.
+
 ---
 
 ## Timeline markers
@@ -251,7 +267,9 @@ Start from one of two targets (supply exactly one):
 | `label(String)` | `label` | Required, 1–120 chars. |
 | `category(String)` | `category` | ≤ 60 chars. |
 | `colour(String)` | `colour` | `#rrggbb`. |
+| `icon(String)` | `icon` | One of `TimelineEventRequest.ICONS` (`swords`, `skull`, `shield`, `pickaxe`, `blast`, `flask`, `user-plus`, `bookmark`, `flag`, `sparkles`, `hammer`, `star`, `trophy`, `bed`, `diamond`); sent in lower case. |
 | `actor(String)` | `actor` | ≤ 80 chars. |
+| `integration(String)` | `integration` | 1–64 lowercase letters, digits, `-` or `_`. Lets the marker's visibility follow the integration's team-role rules. |
 
 > Note: the timeline-event endpoint uses camelCase body fields (`replayId`,
 > `serverId`, `createdAt`), unlike the snake_case replay endpoints. The SDK
@@ -260,7 +278,97 @@ Start from one of two targets (supply exactly one):
 ### `TimelineMarker` (response)
 
 `getId()`, `getReplayId()`, `getTick()`, `getLabel()`, `getCategory()`,
-`getColour()`, `getActor()`, `getCreatedAt()` (`Optional<Instant>`).
+`getColour()`, `getIcon()`, `getActor()`, `getIntegration()`,
+`getCreatedAt()` (`Optional<Instant>`).
+
+---
+
+## Network integration: collections and assets
+
+A **collection** is the logical window over a recording that an integration opens
+when a match starts and finalises when it ends. An **asset** is a playable cut of
+it: the full match (produced when the collection is finalised) or a clip or
+highlight. Content starts **held**; its release policy, or an explicit call,
+releases it.
+
+### Idempotency and headers
+
+Every mutating call on a collection or asset needs an idempotency key, which the
+client sends as the `Idempotency-Key` header. You choose it (1–200 characters, no
+CR, LF or NUL) and the SDK never generates one: a key generated per attempt would
+defeat retrying. Request objects carry the key (`getIdempotencyKey()`), so a
+request can be built once and sent again unchanged; `holdCollection`,
+`releaseCollection`, `revokeCollection` and the two batch calls take it as an
+argument. Sending the same key again returns the original outcome. None of these
+routes read `If-Match`.
+
+| Call | Route | Scope | `Idempotency-Key` |
+| --- | --- | --- | --- |
+| `createCollection(CollectionRequest)` | `POST /v1/replay-collections` | `collections:write` | Required, on the request. |
+| `updateCollection(id, CollectionUpdateRequest)` | `POST /v1/replay-collections/{id}` | `collections:write` | Required, on the request. |
+| `finalizeCollection(id, CollectionFinalizeRequest)` | `POST /v1/replay-collections/{id}/finalize` | `collections:write` | Required, on the request. |
+| `holdCollection(id, key)` | `POST /v1/replay-collections/{id}/hold` | `release:write` | Required, argument. |
+| `releaseCollection(id, key)` | `POST /v1/replay-collections/{id}/release` | `release:write` | Required, argument. |
+| `revokeCollection(id, key)` | `POST /v1/replay-collections/{id}/revoke` | `release:write` | Required, argument. Permanent. |
+| `createAsset(collectionId, AssetRequest)` | `POST /v1/replay-collections/{id}/assets` | `clips:write` | Required, on the request. |
+| `finalizeAsset(id, AssetFinalizeRequest)` | `POST /v1/replay-assets/{id}/finalize` | `clips:write` | Required, on the request. |
+| `createAssetsBatch(key, entries)` | `POST /v1/replay-assets/batch` | `clips:write` | Required, argument; each entry also has a client event id. |
+| `createTimelineEventsBatch(key, entries)` | `POST /v1/timeline-events/batch` | `collections:write` | Required, argument; each entry also has a client event id. |
+| `listCollections(CollectionQuery)` | `GET /v1/replay-collections` | `catalog:read` | None. |
+| `getCollection(id)` / `getCollection(id, playerUuid)` | `GET /v1/replay-collections/{id}` | `catalog:read` | None. |
+| `listCollectionAssets(id, AssetQuery)` | `GET /v1/replay-collections/{id}/assets` | `catalog:read` | None. |
+| `listCollectionTimelineEvents(id)` | `GET /v1/replay-collections/{id}/timeline-events` | `catalog:read` | None. |
+| `getCollectionFacets()` | `GET /v1/replay-collections/facets` | `catalog:read` | None. |
+| `bulkLookupCollections(matchIds, collectionIds)` | `POST /v1/replay-collections/bulk-lookup` | `catalog:read` | None; a read, at most 100 entries. |
+| `getAsset(id)` | `GET /v1/replay-assets/{id}` | `catalog:read` | None. |
+| `listPlayerReplays(playerUuid, PlayerReplayQuery)` | `GET /v1/players/{uuid}/replays` | `catalog:read` | None. |
+| `issueWatchTicket(assetId, viewerPlayerUuid)` | `POST /v1/replay-assets/{id}/watch-ticket` | `playback:issue` | None. |
+| `redeemWatchTicket(assetId, ticket, viewerPlayerUuid)` | `POST /v1/replay-assets/{id}/watch-ticket/redeem` | `catalog:read` | None; the ticket authorises it. |
+| `createWatchLink(assetId)` | `POST /v1/replay-assets/{id}/watch-link` | `playback:issue` | None; paid plans only. |
+| `replayWebhookDelivery(deliveryId)` | `POST /v1/webhooks/deliveries/{id}/replay` | `collections:write` | None. |
+
+Every call has an asynchronous twin on `ReplayCoreAsyncClient`. Failures use the
+exceptions in [Errors](#errors); the stable `code` is on `getCode()`, for example
+`MISSING_IDEMPOTENCY_KEY` and `OPERATION_IN_PROGRESS` (409, retry the same key),
+`DELIVERY_NOT_REPLAYABLE` (409) and `FORBIDDEN_TIER` (403).
+
+### Requests
+
+| Type | Purpose |
+| --- | --- |
+| `CollectionRequest` | Open a collection: server, category, mode, release policy, optional roster, teams, spectators, competition fields, metadata and the first open segment. |
+| `CollectionUpdateRequest` | Players who joined or left, new teams, merged metadata. |
+| `CollectionFinalizeRequest` | End tick, final roster and teams, metadata and the full closed segment list. Moves the collection to `FINALIZING`. |
+| `AssetRequest` | A clip or highlight (`EVENT_CLIP`, `CUSTOM_CLIP`, `HIGHLIGHT`) over a segment's tick window, with player relationships. `FULL_MATCH` is refused. |
+| `AssetFinalizeRequest` | `ready(key)` or `failed(key, failureCode)`. |
+| `ReleasePolicy` | When the full match and clips are released (`ReleaseTrigger`) and their `CollectionVisibility`. |
+| `ScopeParticipant`, `ScopeTeam`, `ScopeSegment` | Roster, team and archive-segment entries. |
+| `ScopeMarkerEntry`, `ScopeClipEntry` | Entries for the two batch calls, each with a client event id. |
+| `CollectionQuery`, `AssetQuery`, `PlayerReplayQuery` | Catalogue filters with `pageSize` and `pageToken`; `CollectionQuery` also takes `customFacet(key, value)`. |
+
+All builders validate bounds locally and throw `IllegalArgumentException`.
+Collection and asset ticks are positions on the collection's timeline, not
+wall-clock times.
+
+### Responses
+
+| Type | Meaning |
+| --- | --- |
+| `ReplayCollection` | A collection, with rosters and playback flags when read from the catalogue. |
+| `ReplayAsset` | An asset, with relationships on a single read, or participants and a watch URL on a player listing. |
+| `CatalogPage<T>` | One cursor-paginated page; `getNextPageToken()`, `hasNextPage()`, `getPageSize()`. |
+| `ScopeOperation` | The outcome of an update, finalise, create-asset or finalise-asset call. |
+| `ScopeMarker` | A collection timeline marker. |
+| `CatalogFacets`, `FacetCount` | Per-dimension counts. |
+| `BatchEntryResult` | One result per batch entry, in request order: `ACCEPTED`, `REJECTED` or `RETRYABLE`. The call itself succeeds even when entries are refused. |
+| `WatchTicket` | A single-use ticket, or a not-ready notice (`isPreparing()`, `getRetryAfterSeconds()`) when the cloud answers HTTP 202. |
+| `WatchTicketRedemption`, `RedeemedSegment` | The segments to play, each with a short-lived URL. Treat the URLs as credentials. |
+| `WatchLink` | A durable browser watch link. |
+| `WebhookDeliveryReplay` | The delivery status after a replay. |
+
+Enums (`ProcessingState`, `ReleaseState`, `CollectionVisibility`, `AssetKind`,
+`EventKind`, `AssetRelation`, `OperationStatus`, `BatchEntryStatus`,
+`ReleaseTrigger`) have an `UNKNOWN` constant for values added by a later release.
 
 ---
 
@@ -293,6 +401,12 @@ status) over the human-readable `detail`.
 - Read and change allowlisted workspace configuration:
   `/v1/api/setup/{path...}`.
 - Create a timeline marker: `POST /v1/api/timeline-events`.
+- Open, update, finalise, hold, release and revoke replay collections, create and
+  finalise their assets, and write batches of markers and clips:
+  `/v1/replay-collections`, `/v1/replay-assets` and `/v1/timeline-events/batch`.
+- Read the collection catalogue, a collection's assets and markers, facets, bulk
+  lookups and a player's replays.
+- Issue and redeem watch tickets, mint watch links and replay webhook deliveries.
 
 **Not yet available to API-key holders** (intentionally not exposed by this SDK):
 
